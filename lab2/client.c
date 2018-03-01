@@ -1,28 +1,32 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
-#define SLEEP_MILISECONDS 500
+#define RETRY_INTERVAL_MS 2000
+
+char MESSAGE[256];
 
 void writeToFile(const char* fileName, const char text[], int characters)
 {
-  int fileHandle;
-  while (fileHandle = open(fileName, O_CREAT | O_WRONLY | O_APPEND) == -1)
+  while (open("lockfile", O_CREAT | O_EXCL, 0) == -1)
   {
-      printf("Server is busy, please wait...");
-      usleep(SLEEP_MILISECONDS * 1000);
+    printf("Server is busy, please wait...\n");
+    usleep(1000 * RETRY_INTERVAL_MS);
   }
 
-  flock(fileHandle, LOCK_EX);
-  write(fileHandle, text, characters);
-  flock(fileHandle, LOCK_UN);
+  int file = open(fileName, O_CREAT | O_WRONLY | O_APPEND);
+  write(file, text, characters);
+
+  // simulate traffic - hold lock a little longer
+  usleep(1000 * RETRY_INTERVAL_MS * 5);
+
+  unlink("lockfile");
 }
 
 char* getUserInput()
 {
   printf("Type:\n");
-  static char message[256];
-  scanf("%s", message);
-  return message;
+  scanf("%s", MESSAGE);
+  return MESSAGE;
 }
 
 void main(void)
