@@ -5,11 +5,15 @@
 
 #define RETRY_INTERVAL_MS 2000
 #define BUFFER_SIZE_BYTES 1024
-#define DATA_FILE_NAME "data.txt"
+
+#define CLIENT_MESSAGE_FILE "client/data.txt"
+#define CLIENT_LOCK_FILE "client/lockfile"
+#define SERVER_MESSAGE_FILE "server/data.txt"
+#define SERVER_LOCK_FILE "server/lockfile"
 
 void waitForFile()
 {
-  while (open("lockfile", O_CREAT | O_EXCL, 0) == -1)
+  while (open(CLIENT_LOCK_FILE, O_CREAT | O_EXCL, 0) == -1)
   {
     printf("[CLIENT] Server is busy, please wait...\n");
     usleep(1000 * RETRY_INTERVAL_MS);
@@ -20,39 +24,36 @@ void writeTextToFile(const char* fileName, char* text, int bytes)
 {
   int file = open(fileName, O_CREAT | O_WRONLY | O_APPEND);
   write(file, text, bytes);
-
-  // simulate traffic - hold lock a little longer
-  usleep(1000 * RETRY_INTERVAL_MS * 5);
-  unlink("lockfile");
 }
 
-char* readTextFromFile(const char* fileName)
+char* readTextFromFile(const char* fileName, int bytes)
 {
-    int file = open(fileName, O_RDONLY);
-    char* responseBuffer = malloc( BUFFER_SIZE_BYTES );
-    read(file, responseBuffer, BUFFER_SIZE_BYTES);
-    return responseBuffer;
+  int file = open(fileName, O_RDONLY);
+  char* buffer = malloc( BUFFER_SIZE_BYTES );
+  read(file, buffer, BUFFER_SIZE_BYTES);
+  return buffer;
 }
 
-char* getUserInput()
+char* getUserInput(int bytes)
 {
-  char* messageBuffer = malloc( BUFFER_SIZE_BYTES );
-  scanf("%s", messageBuffer);
-  return messageBuffer;
+  char* buffer = malloc( bytes );
+  scanf("%s", buffer);
+  return buffer;
 }
 
 void main(void)
 {
   printf("[CLIENT] Enter the message:\n");
-  char* input = getUserInput();
+  char* clientMessage = getUserInput(BUFFER_SIZE_BYTES);
 
   printf("[CLIENT] Waiting for server...\n");
   waitForFile();
 
   printf("[CLIENT] Sending to server...\n");
-  writeTextToFile(DATA_FILE_NAME, input, BUFFER_SIZE_BYTES);
+  writeTextToFile(CLIENT_MESSAGE_FILE, clientMessage, BUFFER_SIZE_BYTES);
 
   printf("[CLIENT] Server response:\n");
-  char* response = readTextFromFile(DATA_FILE_NAME);
+  usleep(1000 * RETRY_INTERVAL_MS);
+  char* response = readTextFromFile(SERVER_MESSAGE_FILE, BUFFER_SIZE_BYTES);
   printf("%s\n", response);
 }
