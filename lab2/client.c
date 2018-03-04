@@ -2,20 +2,16 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define RETRY_INTERVAL_MS 2000
 #define BUFFER_SIZE_BYTES 1024
 
-#define CLIENT_MESSAGE_FILE "client/data.txt"
-#define CLIENT_LOCK_FILE "client/lockfile"
-#define SERVER_MESSAGE_FILE "server/data.txt"
-#define SERVER_LOCK_FILE "server/lockfile"
-
-void waitForFile()
+void waitForLockFile(const char* fileName)
 {
-  while (open(CLIENT_LOCK_FILE, O_CREAT | O_EXCL, 0) == -1)
+  while (open(fileName, O_CREAT | O_EXCL, 0) == -1)
   {
-    printf("[CLIENT] Server is busy, please wait...\n");
+    printf("Server is busy, please wait...\n");
     usleep(1000 * RETRY_INTERVAL_MS);
   }
 }
@@ -41,19 +37,55 @@ char* getUserInput(int bytes)
   return buffer;
 }
 
-void main(void)
+char* getFullFilePath(char* user, char* fileName)
 {
-  printf("[CLIENT] Enter the message:\n");
+  char* path = malloc(BUFFER_SIZE_BYTES);
+  strcat(path, "/home/");
+  strcat(path, user);
+  strcat(path, "/cs/");
+  strcat(path, fileName);
+  return path;
+}
+
+void main(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    printf("Error - provide server address.\n");
+    return;
+  }
+
+  char* serverAddress = argv[1];
+
+  // GET CLIENT ADDRESS
+  char* clientAddressLockPath = getFullFilePath(serverAddress, "clientAddress.lock");
+  char* clientAddressFilePath = getFullFilePath(serverAddress, "clientAddress");
+  printf("Please enter your ID/address:\n");
+  char* clientAddress = getUserInput(BUFFER_SIZE_BYTES);
+
+  // GET CLIENT MESSAGE
+  char* clientMessageLockPath = getFullFilePath(serverAddress, "clientMessage.lock");
+  char* clientMessageFilePath = getFullFilePath(serverAddress, "clientMessage");
+  printf("Please enter your message:\n");
   char* clientMessage = getUserInput(BUFFER_SIZE_BYTES);
 
-  printf("[CLIENT] Waiting for server...\n");
-  waitForFile();
+  // SEND DATA TO SERVER
+  waitForLockFile(clientAddressLockPath);
+  writeTextToFile(clientAddressFilePath, clientAddress, BUFFER_SIZE_BYTES);
+  waitForLockFile(clientMessageLockPath);
+  writeTextToFile(clientMessageFilePath, clientMessage, BUFFER_SIZE_BYTES);
 
-  printf("[CLIENT] Sending to server...\n");
-  writeTextToFile(CLIENT_MESSAGE_FILE, clientMessage, BUFFER_SIZE_BYTES);
+  // SERVER RESPONSE
+  char* serverResponseFilePath = getFullFilePath(clientAddress, "response");
 
-  printf("[CLIENT] Server response:\n");
-  usleep(1000 * RETRY_INTERVAL_MS);
-  char* response = readTextFromFile(SERVER_MESSAGE_FILE, BUFFER_SIZE_BYTES);
-  printf("%s\n", response);
+  // WAIT FOR RESPONSE
+  while ( access(serverResponseFilePath, F_OK) == -1 )
+  {
+  }
+
+  // READ RESPONSE
+  printf("\nServer response:\n");
+  char* response = readTextFromFile(serverResponseFilePath, BUFFER_SIZE_BYTES);
+  printf("%s\n\n", response);
+  remove(serverResponseFilePath);
 }
