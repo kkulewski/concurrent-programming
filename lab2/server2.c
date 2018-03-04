@@ -46,7 +46,7 @@ void main(int argc, char *argv[])
   // CLIENT ADDRESS LOCK FILEPATH
   char* clientAddressLockPath = malloc(BUFFER_SIZE_BYTES);
   strcat(clientAddressLockPath, serverAddressFilePath);
-  strcat(clientAddressLockPath, "clientAddress.lockfile");
+  strcat(clientAddressLockPath, "clientAddress.lock");
 
   // CLIENT ADDRESS FILEPATH
   char* clientAddressFilePath = malloc(BUFFER_SIZE_BYTES);
@@ -56,7 +56,7 @@ void main(int argc, char *argv[])
   // CLIENT MESSAGE LOCK FILEPATH
   char* clientMessageLockPath = malloc(BUFFER_SIZE_BYTES);
   strcat(clientMessageLockPath, serverAddressFilePath);
-  strcat(clientMessageLockPath, "clientMessage.lockfile");
+  strcat(clientMessageLockPath, "clientMessage.lock");
 
   // CLIENT MESSAGE FILEPATH
   char* clientMessageFilePath = malloc(BUFFER_SIZE_BYTES);
@@ -68,6 +68,8 @@ void main(int argc, char *argv[])
     // WAIT FOR CLIENT ADDRESS LOCK
     if ( access(clientAddressLockPath, F_OK) != -1 )
     {
+      printf("### CLIENT CONNECTED ###\n");
+
       // READ CLIENT ADDRESS
       char* clientAddress = readTextFromFile(clientAddressFilePath, BUFFER_SIZE_BYTES);
       printf("[ADR]: %s\n", clientAddress);
@@ -97,6 +99,8 @@ void main(int argc, char *argv[])
       remove(clientAddressLockPath);
       remove(clientMessageFilePath);
       remove(clientMessageLockPath);
+
+      printf("### CONVERSATION FINISHED ###\n\n");
     }
   }
 }

@@ -47,11 +47,12 @@ void main(int argc, char *argv[])
 
   char* serverAddress = argv[1];
 
-  // SEND CLIENT ADDRESS TO SERVER WHEN SERVER NOT BUSY
+  // PREPARE PATHS + GET USER DATA
+  // CLIENT ADDRESS
   char* clientAddressLockPath = malloc(BUFFER_SIZE_BYTES);
   strcat(clientAddressLockPath, "/home/");
   strcat(clientAddressLockPath, serverAddress);
-  strcat(clientAddressLockPath, "/cs/clientAddress.lockfile");
+  strcat(clientAddressLockPath, "/cs/clientAddress.lock");
 
   char* clientAddressFilePath = malloc(BUFFER_SIZE_BYTES);
   strcat(clientAddressFilePath, "/home/");
@@ -60,15 +61,13 @@ void main(int argc, char *argv[])
 
   printf("Please enter your ID/address:\n");
   char* clientAddress = getUserInput(BUFFER_SIZE_BYTES);
-  waitForLockFile(clientAddressLockPath);
-  writeTextToFile(clientAddressFilePath, clientAddress, BUFFER_SIZE_BYTES);
-
 
   // SEND CLIENT MESSAGE TO SERVER
+  // CLIENT MESSAGE
   char* clientMessageLockPath = malloc(BUFFER_SIZE_BYTES);
   strcat(clientMessageLockPath, "/home/");
   strcat(clientMessageLockPath, serverAddress);
-  strcat(clientMessageLockPath, "/cs/clientMessage.lockfile");
+  strcat(clientMessageLockPath, "/cs/clientMessage.lock");
 
   char* clientMessageFilePath = malloc(BUFFER_SIZE_BYTES);
   strcat(clientMessageFilePath, "/home/");
@@ -77,6 +76,10 @@ void main(int argc, char *argv[])
 
   printf("Please enter your message:\n");
   char* clientMessage = getUserInput(BUFFER_SIZE_BYTES);
+
+  // SEND DATA TO SERVER
+  waitForLockFile(clientAddressLockPath);
+  writeTextToFile(clientAddressFilePath, clientAddress, BUFFER_SIZE_BYTES);
   waitForLockFile(clientMessageLockPath);
   writeTextToFile(clientMessageFilePath, clientMessage, BUFFER_SIZE_BYTES);
 
