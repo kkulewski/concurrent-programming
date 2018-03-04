@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define RETRY_INTERVAL_MS 1000
+#define RETRY_INTERVAL_MS 2000
 #define BUFFER_SIZE_BYTES 1024
 
 void waitForLockFile(const char* fileName)
@@ -37,6 +37,16 @@ char* getUserInput(int bytes)
   return buffer;
 }
 
+char* getFullFilePath(char* user, char* fileName)
+{
+  char* path = malloc(BUFFER_SIZE_BYTES);
+  strcat(path, "/home/");
+  strcat(path, user);
+  strcat(path, "/cs/");
+  strcat(path, fileName);
+  return path;
+}
+
 void main(int argc, char *argv[])
 {
   if (argc < 2)
@@ -47,33 +57,15 @@ void main(int argc, char *argv[])
 
   char* serverAddress = argv[1];
 
-  // PREPARE PATHS + GET USER DATA
-  // CLIENT ADDRESS
-  char* clientAddressLockPath = malloc(BUFFER_SIZE_BYTES);
-  strcat(clientAddressLockPath, "/home/");
-  strcat(clientAddressLockPath, serverAddress);
-  strcat(clientAddressLockPath, "/cs/clientAddress.lock");
-
-  char* clientAddressFilePath = malloc(BUFFER_SIZE_BYTES);
-  strcat(clientAddressFilePath, "/home/");
-  strcat(clientAddressFilePath, serverAddress);
-  strcat(clientAddressFilePath, "/cs/clientAddress");
-
-  printf("Please enter your ID/address:\n");
+  // GET CLIENT ADDRESS
+  char* clientAddressLockPath = getFullFilePath(serverAddress, "clientAddress.lock");
+  char* clientAddressFilePath = getFullFilePath(serverAddress, "clientAddress");
+  printf("\nPlease enter your ID/address:\n");
   char* clientAddress = getUserInput(BUFFER_SIZE_BYTES);
 
-  // SEND CLIENT MESSAGE TO SERVER
-  // CLIENT MESSAGE
-  char* clientMessageLockPath = malloc(BUFFER_SIZE_BYTES);
-  strcat(clientMessageLockPath, "/home/");
-  strcat(clientMessageLockPath, serverAddress);
-  strcat(clientMessageLockPath, "/cs/clientMessage.lock");
-
-  char* clientMessageFilePath = malloc(BUFFER_SIZE_BYTES);
-  strcat(clientMessageFilePath, "/home/");
-  strcat(clientMessageFilePath, serverAddress);
-  strcat(clientMessageFilePath, "/cs/clientMessage");
-
+  // GET CLIENT MESSAGE
+  char* clientMessageLockPath = getFullFilePath(serverAddress, "clientMessage.lock");
+  char* clientMessageFilePath = getFullFilePath(serverAddress, "clientMessage");
   printf("Please enter your message:\n");
   char* clientMessage = getUserInput(BUFFER_SIZE_BYTES);
 
@@ -83,12 +75,8 @@ void main(int argc, char *argv[])
   waitForLockFile(clientMessageLockPath);
   writeTextToFile(clientMessageFilePath, clientMessage, BUFFER_SIZE_BYTES);
 
-
   // SERVER RESPONSE
-  char* serverResponseFilePath = malloc(BUFFER_SIZE_BYTES);
-  strcat(serverResponseFilePath, "/home/");
-  strcat(serverResponseFilePath, clientAddress);
-  strcat(serverResponseFilePath, "/cs/response");
+  char* serverResponseFilePath = getFullFilePath(clientAddress, "response");
 
   // WAIT FOR RESPONSE
   while ( access(serverResponseFilePath, F_OK) == -1 )
@@ -96,8 +84,8 @@ void main(int argc, char *argv[])
   }
 
   // READ RESPONSE
-  printf("Server response:\n");
+  printf("\nServer response:\n");
   char* response = readTextFromFile(serverResponseFilePath, BUFFER_SIZE_BYTES);
-  printf("%s\n", response);
+  printf("%s\n\n", response);
   remove(serverResponseFilePath);
 }

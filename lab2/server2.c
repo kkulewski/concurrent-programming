@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define RETRY_INTERVAL_MS 1000
 #define BUFFER_SIZE_BYTES 1024
 
 void writeTextToFile(const char* fileName, char* text, int bytes)
@@ -28,6 +27,16 @@ char* getUserInput(int bytes)
   return buffer;
 }
 
+char* getFullFilePath(char* user, char* fileName)
+{
+  char* path = malloc(BUFFER_SIZE_BYTES);
+  strcat(path, "/home/");
+  strcat(path, user);
+  strcat(path, "/cs/");
+  strcat(path, fileName);
+  return path;
+}
+
 void main(int argc, char *argv[])
 {
   if (argc < 2)
@@ -36,39 +45,20 @@ void main(int argc, char *argv[])
     return;
   }
 
-  // OBTAIN SERVER ADDRESS
+  // SET FILEPATHs
   char* serverAddress = argv[1];
-  char* serverAddressFilePath = malloc(BUFFER_SIZE_BYTES);
-  strcat(serverAddressFilePath, "/home/");
-  strcat(serverAddressFilePath, serverAddress);
-  strcat(serverAddressFilePath, "/cs/");
+  char* clientAddressLockPath = getFullFilePath(serverAddress, "clientAddress.lock");
+  char* clientAddressFilePath = getFullFilePath(serverAddress, "clientAddress");
+  char* clientMessageLockPath = getFullFilePath(serverAddress, "clientMessage.lock");
+  char* clientMessageFilePath = getFullFilePath(serverAddress, "clientMessage");
 
-  // CLIENT ADDRESS LOCK FILEPATH
-  char* clientAddressLockPath = malloc(BUFFER_SIZE_BYTES);
-  strcat(clientAddressLockPath, serverAddressFilePath);
-  strcat(clientAddressLockPath, "clientAddress.lock");
-
-  // CLIENT ADDRESS FILEPATH
-  char* clientAddressFilePath = malloc(BUFFER_SIZE_BYTES);
-  strcat(clientAddressFilePath, serverAddressFilePath);
-  strcat(clientAddressFilePath, "clientAddress");
-
-  // CLIENT MESSAGE LOCK FILEPATH
-  char* clientMessageLockPath = malloc(BUFFER_SIZE_BYTES);
-  strcat(clientMessageLockPath, serverAddressFilePath);
-  strcat(clientMessageLockPath, "clientMessage.lock");
-
-  // CLIENT MESSAGE FILEPATH
-  char* clientMessageFilePath = malloc(BUFFER_SIZE_BYTES);
-  strcat(clientMessageFilePath, serverAddressFilePath);
-  strcat(clientMessageFilePath, "clientMessage");
-
+  printf("### SERVER IS RUNNING... ###\n");
   while(1)
   {
     // WAIT FOR CLIENT ADDRESS LOCK
     if ( access(clientAddressLockPath, F_OK) != -1 )
     {
-      printf("### CLIENT CONNECTED ###\n");
+      printf("\n### CLIENT CONNECTED ###\n");
 
       // READ CLIENT ADDRESS
       char* clientAddress = readTextFromFile(clientAddressFilePath, BUFFER_SIZE_BYTES);
@@ -83,18 +73,13 @@ void main(int argc, char *argv[])
       char* clientMessage = readTextFromFile(clientMessageFilePath, BUFFER_SIZE_BYTES);
       printf("[MSG]: %s\n", clientMessage);
 
-
       // SEND RESPONSE TO CLIENT
-      char* responseAddressFilePath = malloc(BUFFER_SIZE_BYTES);
-      strcat(responseAddressFilePath, "/home/");
-      strcat(responseAddressFilePath, clientAddress);
-      strcat(responseAddressFilePath, "/cs/response");
-      printf("Please enter your response:\n");
-
+      printf("[RSP]: ");
       char* serverResponse = getUserInput(BUFFER_SIZE_BYTES);
+      char* responseAddressFilePath = getFullFilePath(clientAddress, "response");
       writeTextToFile(responseAddressFilePath, serverResponse, BUFFER_SIZE_BYTES);
 
-      // DESTROY CLIENT ADDRESS, MESSAGE & LOCK
+      // DESTROY CLIENT ADDRESS, MESSAGE & LOCKs
       remove(clientAddressFilePath);
       remove(clientAddressLockPath);
       remove(clientMessageFilePath);
