@@ -22,8 +22,17 @@ char* readTextFromFile(const char* fileName, int bytes)
 
 char* getUserInput(int bytes)
 {
-  char* buffer = malloc( bytes );
-  scanf("%s", buffer);
+  char* buffer = malloc(bytes);
+  char* line = malloc(bytes);
+
+  size_t len = 0;
+  while (getline(&line, &len, stdin) > 0)
+  {
+    strcat(buffer, line);
+    line = malloc(bytes);
+  }
+  
+  buffer[strlen(buffer) - 1] = '\0';
   return buffer;
 }
 
@@ -44,9 +53,10 @@ void main(int argc, char *argv[])
     printf("Error - provide server address.\n");
     return;
   }
+  
+  char* serverAddress = argv[1];
 
   // SET FILEPATHs
-  char* serverAddress = argv[1];
   char* clientAddressLockPath = getFullFilePath(serverAddress, "clientAddress.lock");
   char* clientAddressFilePath = getFullFilePath(serverAddress, "clientAddress");
   char* clientMessageLockPath = getFullFilePath(serverAddress, "clientMessage.lock");
@@ -77,7 +87,8 @@ void main(int argc, char *argv[])
       printf("[RESPONSE]:\n");
       char* serverResponse = getUserInput(BUFFER_SIZE_BYTES);
       char* responseAddressFilePath = getFullFilePath(clientAddress, "response");
-      writeTextToFile(responseAddressFilePath, serverResponse, BUFFER_SIZE_BYTES);
+      writeTextToFile(serverResponseFilePath, serverResponse, BUFFER_SIZE_BYTES);
+
 
       // DESTROY CLIENT ADDRESS, MESSAGE & LOCKs
       remove(clientAddressFilePath);

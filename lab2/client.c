@@ -32,8 +32,17 @@ char* readTextFromFile(const char* fileName, int bytes)
 
 char* getUserInput(int bytes)
 {
-  char* buffer = malloc( bytes );
-  scanf("%s", buffer);
+  char* buffer = malloc(bytes);
+  char* line = malloc(bytes);
+
+  size_t len = 0;
+  while (getline(&line, &len, stdin) > 0)
+  {
+    strcat(buffer, line);
+    line = malloc(bytes);
+  }
+
+  buffer[strlen(buffer) - 1] = '\0';
   return buffer;
 }
 
@@ -70,6 +79,7 @@ void main(int argc, char *argv[])
   char* clientMessage = getUserInput(BUFFER_SIZE_BYTES);
 
   // SEND DATA TO SERVER
+  printf("Writing to: %s\n", clientAddressFilePath);
   waitForLockFile(clientAddressLockPath);
   writeTextToFile(clientAddressFilePath, clientAddress, BUFFER_SIZE_BYTES);
   waitForLockFile(clientMessageLockPath);
@@ -77,7 +87,7 @@ void main(int argc, char *argv[])
 
   // SERVER RESPONSE
   char* serverResponseFilePath = getFullFilePath(clientAddress, "response");
-
+  
   // WAIT FOR RESPONSE
   while ( access(serverResponseFilePath, F_OK) == -1 )
   {
