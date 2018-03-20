@@ -1,17 +1,19 @@
 #!/bin/bash
-
-SERVER_ADDRESS=$1
-
-CLIENT_FIFO="$HOME/client_fifo"
 SERVER_FIFO="$HOME/server_fifo"
 
-rm $SERVER_FIFO
+if [ -p $SERVER_FIFO ]; then
+    rm $SERVER_FIFO
+fi
 mkfifo $SERVER_FIFO
 chmod 777 $SERVER_FIFO
 
+echo "[SERVER]: waiting for request..."
 while true; do
-  read CLIENT_ADDRESS < $SERVER_FIFO
-  read ARGUMENT < $SERVER_FIFO
-  echo $(($ARGUMENT*2)) > $CLIENT_FIFO
+    read REQUEST < $SERVER_FIFO
+    if [ -n "$REQUEST" ]; then
+        echo "[SERVER]: forked - [$REQUEST]"
+        ./handle_request.sh $REQUEST &
+    fi
+    sleep 3
 done
 exit 0
