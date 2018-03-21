@@ -1,4 +1,8 @@
 #!/bin/bash
+
+trap "" SIGHUP SIGTERM SIGCHLD
+trap "exit 0" SIGUSR1
+
 SERVER_FIFO="$HOME/server_fifo"
 
 if [ -p $SERVER_FIFO ]; then
