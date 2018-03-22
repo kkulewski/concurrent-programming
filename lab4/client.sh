@@ -10,13 +10,9 @@ fi
 mkfifo $CLIENT_FIFO
 chmod 777 $CLIENT_FIFO
 
-echo "[CLIENT]: sending request..."
 echo $CLIENT_FIFO $ARGUMENT > $SERVER_FIFO
 
-echo "[CLIENT]: waiting for response.."
-while [ -z $RESPONSE ]; do
-  read RESPONSE < $CLIENT_FIFO
-done
+read RESPONSE < $CLIENT_FIFO
 echo $RESPONSE
 rm $CLIENT_FIFO
 exit 0
