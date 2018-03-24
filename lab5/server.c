@@ -1,29 +1,62 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define SERVER_FIFO "server_fifo"
 #define CLIENT_FIFO "client_fifo"
 
+#define DATABASE_RECORDS 3
+#define NAME_SIZE 20
+
 typedef struct record_t
 {
     int id;
-    char* name;
+    char name[NAME_SIZE];
 } record;
+
+typedef struct request_t
+{
+    int id;
+    char home[NAME_SIZE];
+} request;
+
+record* getDatabase()
+{
+    record* records = malloc(DATABASE_RECORDS * sizeof(record));
+    for (int i = 0; i < DATABASE_RECORDS; i++)
+    {
+        records[i].id = -1;
+    }
+    
+    records[0].id = 0;
+    strcpy(records[0].name, "Kowalski");
+    records[1].id = 1;
+    strcpy(records[1].name, "Nowak");
+    records[2].id = 2;
+    strcpy(records[2].name, "Wisniewski");
+
+    return records;
+}
+
+char* getRecordById(record* records, int recordId)
+{
+    for (int i = 0; i < DATABASE_RECORDS; i++)
+    {
+        if (records[i].id == recordId)
+        {
+            return records[i].name;
+        }
+    }
+
+    return "Not found!";
+}
 
 int main()
 {
-    int recordsCount = 3;
-    record records[recordsCount];
-    for (int i = 0; i < recordsCount; i++)
-    {
-        records[i].id = i;
-    }
-    
-    records[0].name = "Kowalski";
-    records[1].name = "Nowak";
-    records[2].name = "Wisniewski";
+    record* db = getDatabase();
 
-    for (int i = 0; i < recordsCount; i++)
-    {
-        printf("[%i] %s \n", records[i].id, records[i].name);
-    }
+    printf("%s\n", getRecordById(db, 0));
+    printf("%s\n", getRecordById(db, 1));
+    printf("%s\n", getRecordById(db, 2));
+    printf("%s\n", getRecordById(db, 3));
 }
