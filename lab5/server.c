@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 
 #define SERVER_FIFO "server_fifo"
 #define CLIENT_FIFO "client_fifo"
@@ -19,7 +20,7 @@ typedef struct record_t
 typedef struct request_t
 {
     int id;
-    char* home;
+    char* homepath;
 } request;
 
 record* getDatabase()
@@ -54,12 +55,45 @@ char* getRecordById(record* records, int recordId)
     return "Not found!";
 }
 
+request getRequest(int fifoHandle, int requestLength)
+{
+    unsigned char* buffer = (char*) malloc(requestLength);
+    read(fifoHandle, buffer, requestLength);
+
+    request req;
+    memcpy(&req.id, buffer, sizeof(req->id));
+    req.homepath = (char*) malloc(requestLength - sizeof(int));
+    memcpy(req.homepath, buffer + sizeof(req->id), requestLength - sizeof(req->id));
+
+    free(buffer);
+    return req;
+}
+
+void handleRequest(request* req, record* recordsDatabase)
+{
+    printf("## Received request from: %s \n", req->homepath);
+    printf("- requested record ID: %i \n", req->id);
+    printf("- requested content  : %s \n", getRecordById(recordsDatabase, req->id));
+    printf("\n");
+}
+
 int main()
 {
-    record* db = getDatabase();
+    record* recordsDatabase = getDatabase();
 
-    printf("%s\n", getRecordById(db, 0));
-    printf("%s\n", getRecordById(db, 1));
-    printf("%s\n", getRecordById(db, 2));
-    printf("%s\n", getRecordById(db, 3));
+    mkfifo(CLIENT_FIFO, 0666);
+    int clientFifoHandle = open(CLIENT_FIFO, O_RDONLY);
+
+    request req;
+    int requestLength = 0;
+    int bytesRead = 0;
+
+    while (1)
+    {
+        if ((bytesRead = read(clientFifoHandle, &requestLength, sizeof(int))) > 0)
+        {
+            req = getRequest(clientFifoHandle, requestLength);
+            handleRequest(&req, recordsDatabase);
+        }
+    }
 }
