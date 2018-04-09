@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #define SERVER_FIFO "server_fifo"
 #define CLIENT_FIFO "client_fifo"
@@ -11,13 +13,13 @@
 typedef struct record_t
 {
     int id;
-    char name[NAME_SIZE];
+    char* name;
 } record;
 
 typedef struct request_t
 {
     int id;
-    char home[NAME_SIZE];
+    char* home;
 } request;
 
 record* getDatabase()
@@ -26,8 +28,9 @@ record* getDatabase()
     for (int i = 0; i < DATABASE_RECORDS; i++)
     {
         records[i].id = -1;
+        records[i].name = malloc(NAME_SIZE * sizeof(char));
     }
-    
+
     records[0].id = 0;
     strcpy(records[0].name, "Kowalski");
     records[1].id = 1;
