@@ -19,6 +19,8 @@ typedef struct request_t
 
 typedef struct response_t
 {
+    int payloadSize;
+
     // payload
     char* name;
 
@@ -27,8 +29,7 @@ typedef struct response_t
 void sendRequest(int serverFifoHandle, request* req)
 {
     int requestSize = sizeof(req->payloadSize) + req->payloadSize;
-    void* buffer;
-    buffer = malloc(requestSize);
+    void* buffer = malloc(requestSize);
 
     memcpy(buffer, &req->payloadSize, sizeof(req->payloadSize));
     memcpy(buffer + sizeof(req->payloadSize), &req->id, sizeof(req->id));
@@ -38,14 +39,15 @@ void sendRequest(int serverFifoHandle, request* req)
     free(buffer);
 }
 
-response* receiveResponse(int clientFifoHandle, int responseSize)
+response* receiveResponse(int clientFifoHandle, int responsePayloadSize)
 {
-    void* buffer = malloc(responseSize);
-    response* res = malloc(responseSize);
-    res->name = malloc(responseSize);
+    response* res = malloc(sizeof(responsePayloadSize) + responsePayloadSize);
+    res->payloadSize = responsePayloadSize;
+    res->name = malloc(responsePayloadSize);
 
-    read(clientFifoHandle, buffer, responseSize);
-    memcpy(res->name, buffer, responseSize);
+    void* buffer = malloc(responsePayloadSize);
+    read(clientFifoHandle, buffer, responsePayloadSize);
+    memcpy(res->name, buffer, responsePayloadSize);
 
     free(buffer);
     return res;
@@ -55,12 +57,11 @@ void waitForResponse()
 {
     int clientFifoHandle = open(CLIENT_FIFO, O_RDONLY);
 
-    int responseSize = 0;
-    if (read(clientFifoHandle, &responseSize, sizeof(int)) > 0)
+    int responsePayloadSize = 0;
+    if (read(clientFifoHandle, &responsePayloadSize, sizeof(responsePayloadSize)) > 0)
     {
-        printf("res size: %i \n", responseSize);
-        response* res = receiveResponse(clientFifoHandle, responseSize);
-        printf("%s \n", res->name);
+        response* res = receiveResponse(clientFifoHandle, responsePayloadSize);
+        printf("%s\n", res->name);
     }
 }
 

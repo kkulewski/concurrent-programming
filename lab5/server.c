@@ -13,6 +13,8 @@
 
 typedef struct request_t
 {
+    int payloadSize;
+
     // payload
     int id;
     char* homepath;
@@ -67,15 +69,17 @@ char* getNameByRecordId(int recordId)
     return "Not found!";
 }
 
-request* receiveRequest(int serverFifoHandle, int requestSize)
+request* receiveRequest(int serverFifoHandle, int requestPayloadSize)
 {
-    void* buffer = malloc(requestSize);
-    request* req = malloc(requestSize);
-    req->homepath = malloc(requestSize - sizeof(req->id));
+    request* req = malloc(sizeof(requestPayloadSize) + requestPayloadSize);
+    req->payloadSize = requestPayloadSize;
+    req->homepath = malloc(requestPayloadSize - sizeof(req->id));
 
-    read(serverFifoHandle, buffer, requestSize);
+    void* buffer = malloc(requestPayloadSize);
+    read(serverFifoHandle, buffer, requestPayloadSize);
+
     memcpy(&req->id, buffer, sizeof(req->id));
-    memcpy(req->homepath, buffer + sizeof(req->id), requestSize - sizeof(req->id));
+    memcpy(req->homepath, buffer + sizeof(req->id), requestPayloadSize - sizeof(req->id));
 
     free(buffer);
     return req;
@@ -119,10 +123,10 @@ void waitForRequests()
 
     while (1)
     {
-        int requestSize = 0;
-        if (read(serverFifoHandle, &requestSize, sizeof(int)) > 0)
+        int requestPayloadSize = 0;
+        if (read(serverFifoHandle, &requestPayloadSize, sizeof(int)) > 0)
         {
-            handleRequest(serverFifoHandle, requestSize);
+            handleRequest(serverFifoHandle, requestPayloadSize);
         }
     }
 }
