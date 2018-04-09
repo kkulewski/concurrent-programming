@@ -6,8 +6,27 @@
 #include <sys/stat.h>
 
 #define CLIENT_FIFO "client_fifo"
+#define SERVER_FIFO "server_fifo"
+
 #define DATABASE_RECORDS 3
 #define NAME_SIZE 20
+
+typedef struct request_t
+{
+    // payload
+    int id;
+    char* homepath;
+
+} request;
+
+typedef struct response_t
+{
+    int payloadSize;
+
+    // payload
+    char* name;
+
+} response;
 
 typedef struct record_t
 {
@@ -15,13 +34,6 @@ typedef struct record_t
     char* name;
 
 } record;
-
-typedef struct request_t
-{
-    int id;
-    char* homepath;
-
-} request;
 
 record* g_database;
 
@@ -42,7 +54,7 @@ void initializeDatabase()
     strcpy(g_database[2].name, "Wisniewski");
 }
 
-char* getRecordById(int recordId)
+char* getNameByRecordId(int recordId)
 {
     for (int i = 0; i < DATABASE_RECORDS; i++)
     {
@@ -55,13 +67,13 @@ char* getRecordById(int recordId)
     return "Not found!";
 }
 
-request* receiveRequest(int fifoHandle, int requestSize)
+request* receiveRequest(int serverFifoHandle, int requestSize)
 {
     void* buffer = malloc(requestSize);
     request* req = malloc(requestSize);
     req->homepath = malloc(requestSize - sizeof(req->id));
 
-    read(fifoHandle, buffer, requestSize);
+    read(serverFifoHandle, buffer, requestSize);
     memcpy(&req->id, buffer, sizeof(req->id));
     memcpy(req->homepath, buffer + sizeof(req->id), requestSize - sizeof(req->id));
 
@@ -69,33 +81,57 @@ request* receiveRequest(int fifoHandle, int requestSize)
     return req;
 }
 
-void handleRequest(request* req)
+response* createResponseForRequest(request* req)
 {
-    printf("## Received request from: %s \n", req->homepath);
-    printf("- requested record ID: %i \n", req->id);
-    printf("- requested content  : %s \n", getRecordById(req->id));
-    printf("\n");
+    response* resp = malloc(sizeof(response));
+    resp->name = getNameByRecordId(req->id);
+    resp->payloadSize = strlen(resp->name);
+
+    return resp;
 }
 
-void waitForRequests(int fifoHandle)
+void sendResponse(int clientFifoHandle, response* res)
 {
+    int responseSize = res->payloadSize + sizeof(res->payloadSize);
+    void* buffer = malloc(responseSize);
+
+    memcpy(buffer, &res->payloadSize, sizeof(res->payloadSize));
+    memcpy(buffer + sizeof(res->payloadSize), &res->name, res->payloadSize);
+    write(clientFifoHandle, buffer, responseSize);
+
+    free(buffer);
+}
+
+void handleRequest(int serverFifoHandle, int requestSize)
+{
+    request* req = receiveRequest(serverFifoHandle, requestSize);
+    response* res = createResponseForRequest(req);
+
+    // using local client fifo path for sake of simplicity
+    int clientFifoHandle = open(CLIENT_FIFO, O_WRONLY);
+    sendResponse(clientFifoHandle, res);
+    close(clientFifoHandle);
+}
+
+void waitForRequests()
+{
+    int serverFifoHandle = open(SERVER_FIFO, O_RDONLY);
+
     while (1)
     {
         int requestSize = 0;
-        if (read(fifoHandle, &requestSize, sizeof(int)) > 0)
+        if (read(serverFifoHandle, &requestSize, sizeof(int)) > 0)
         {
-            request* req = receiveRequest(fifoHandle, requestSize);
-            handleRequest(req);
+            handleRequest(serverFifoHandle, requestSize);
         }
     }
 }
 
 int main()
 {
-    initializeDatabase();
-
+    mkfifo(SERVER_FIFO, 0666);
     mkfifo(CLIENT_FIFO, 0666);
-    int fifoHandle = open(CLIENT_FIFO, O_RDONLY);
 
-    waitForRequests(fifoHandle);
+    initializeDatabase();
+    waitForRequests();
 }
