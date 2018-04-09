@@ -26,6 +26,15 @@ typedef struct response_t
 
 } response;
 
+request* createRequest(int id, char* homepath)
+{
+    request* req = malloc(sizeof(request));
+    req->id = id;
+    req->homepath = homepath;
+    req->payloadSize = sizeof(req->id) + strlen(req->homepath);
+    return req;
+}
+
 void sendRequest(int serverFifoHandle, request* req)
 {
     int requestSize = sizeof(req->payloadSize) + req->payloadSize;
@@ -53,27 +62,20 @@ response* receiveResponse(int clientFifoHandle, int responsePayloadSize)
     return res;
 }
 
-void waitForResponse()
+void handleResponse(int clientFifoHandle)
 {
-    int clientFifoHandle = open(CLIENT_FIFO, O_RDONLY);
-
     int responsePayloadSize = 0;
-    if (read(clientFifoHandle, &responsePayloadSize, sizeof(responsePayloadSize)) > 0)
-    {
-        response* res = receiveResponse(clientFifoHandle, responsePayloadSize);
-        printf("%s\n", res->name);
-    }
+    read(clientFifoHandle, &responsePayloadSize, sizeof(responsePayloadSize));
+    response* res = receiveResponse(clientFifoHandle, responsePayloadSize);
+    printf("%s\n", res->name);
 }
 
 int main(int argc, char * argv[])
 {
-    int serverFifoHandle = open(SERVER_FIFO, O_WRONLY);
+    int serverFifo = open(SERVER_FIFO, O_WRONLY);
+    request* req = createRequest(atoi(argv[1]), getenv("HOME"));
+    sendRequest(serverFifo, req);
 
-    request req;
-    req.id = atoi(argv[1]);
-    req.homepath = getenv("HOME");
-    req.payloadSize = sizeof(req.id) + strlen(req.homepath);
-    sendRequest(serverFifoHandle, &req);
-
-    waitForResponse();
+    int clientFifo = open(CLIENT_FIFO, O_RDONLY);
+    handleResponse(clientFifo);
 }
