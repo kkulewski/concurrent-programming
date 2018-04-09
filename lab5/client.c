@@ -8,28 +8,25 @@
 
 typedef struct request_t
 {
-    unsigned int length;
+    int payloadSize;
+
+    // payload
     int id;
     char* homepath;
+
 } request;
 
 void sendRequest(int fifoHandle, request* req)
 {
-    unsigned char* buffer;
+    int requestSize = sizeof(req->payloadSize) + req->payloadSize;
+    void* buffer;
+    buffer = malloc(requestSize);
 
-    // alloc memory for whole request
-    buffer = (char*) malloc(sizeof(req->length) + req->length);
+    memcpy(buffer, &req->payloadSize, sizeof(req->payloadSize));
+    memcpy(buffer + sizeof(req->payloadSize), &req->id, sizeof(req->id));
+    memcpy(buffer + sizeof(req->payloadSize) + sizeof(req->id), req->homepath, req->payloadSize - sizeof(req->id));
 
-    // copy request length to buffer
-    memcpy(buffer, &req->length, sizeof(req->length));
-
-    // copy request ID to buffer
-    memcpy(buffer + sizeof(req->length), &req->id, sizeof(req->id));
-
-    // copy request homepath to buffer (substract id from length because length == id + homepath)
-    memcpy(buffer + sizeof(req->length) + sizeof(req->id), req->homepath, req->length - sizeof(req->id));
-
-    write(fifoHandle, buffer, req->length + sizeof(req->id));
+    write(fifoHandle, buffer, requestSize);
     free(buffer);
 }
 
@@ -40,7 +37,7 @@ int main(int argc, char * argv[])
     request req;
     req.id = atoi(argv[1]);
     req.homepath = getenv("HOME");
-    req.length = sizeof(req.id) + strlen(req.homepath);
+    req.payloadSize = sizeof(req.id) + strlen(req.homepath);
 
     sendRequest(clientFifoHandle, &req);
 }

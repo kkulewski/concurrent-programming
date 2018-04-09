@@ -5,9 +5,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#define SERVER_FIFO "server_fifo"
 #define CLIENT_FIFO "client_fifo"
-
 #define DATABASE_RECORDS 3
 #define NAME_SIZE 20
 
@@ -15,12 +13,14 @@ typedef struct record_t
 {
     int id;
     char* name;
+
 } record;
 
 typedef struct request_t
 {
     int id;
     char* homepath;
+
 } request;
 
 record* getDatabase()
@@ -55,15 +55,15 @@ char* getRecordById(record* records, int recordId)
     return "Not found!";
 }
 
-request getRequest(int fifoHandle, int requestLength)
+request receiveRequest(int fifoHandle, int requestSize)
 {
-    unsigned char* buffer = (char*) malloc(requestLength);
-    read(fifoHandle, buffer, requestLength);
+    void* buffer = malloc(requestSize);
+    read(fifoHandle, buffer, requestSize);
 
     request req;
-    memcpy(&req.id, buffer, sizeof(req->id));
-    req.homepath = (char*) malloc(requestLength - sizeof(int));
-    memcpy(req.homepath, buffer + sizeof(req->id), requestLength - sizeof(req->id));
+    req.homepath = malloc(requestSize - sizeof(req.id));
+    memcpy(&req.id, buffer, sizeof(req.id));
+    memcpy(req.homepath, buffer + sizeof(req.id), requestSize - sizeof(req.id));
 
     free(buffer);
     return req;
@@ -77,23 +77,25 @@ void handleRequest(request* req, record* recordsDatabase)
     printf("\n");
 }
 
+void waitForRequests(int fifoHandle, record* recordsDatabase)
+{
+    while (1)
+    {
+        int requestLength = 0;
+        if (read(fifoHandle, &requestLength, sizeof(int)) > 0)
+        {
+            request req = receiveRequest(fifoHandle, requestLength);
+            handleRequest(&req, recordsDatabase);
+        }
+    }
+}
+
 int main()
 {
     record* recordsDatabase = getDatabase();
 
     mkfifo(CLIENT_FIFO, 0666);
-    int clientFifoHandle = open(CLIENT_FIFO, O_RDONLY);
+    int fifoHandle = open(CLIENT_FIFO, O_RDONLY);
 
-    request req;
-    int requestLength = 0;
-    int bytesRead = 0;
-
-    while (1)
-    {
-        if ((bytesRead = read(clientFifoHandle, &requestLength, sizeof(int))) > 0)
-        {
-            req = getRequest(clientFifoHandle, requestLength);
-            handleRequest(&req, recordsDatabase);
-        }
-    }
+    waitForRequests(fifoHandle, recordsDatabase);
 }
