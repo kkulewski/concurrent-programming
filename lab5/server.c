@@ -96,7 +96,7 @@ void sendResponse(int clientFifoHandle, response* res)
     void* buffer = malloc(responseSize);
 
     memcpy(buffer, &res->payloadSize, sizeof(res->payloadSize));
-    memcpy(buffer + sizeof(res->payloadSize), &res->name, res->payloadSize);
+    memcpy(buffer + sizeof(res->payloadSize), res->name, res->payloadSize);
     write(clientFifoHandle, buffer, responseSize);
 
     free(buffer);
