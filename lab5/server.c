@@ -23,79 +23,79 @@ typedef struct request_t
 
 } request;
 
-record* getDatabase()
+record* g_database;
+
+void initializeDatabase()
 {
-    record* records = malloc(DATABASE_RECORDS * sizeof(record));
+    g_database = malloc(DATABASE_RECORDS * sizeof(record));
     for (int i = 0; i < DATABASE_RECORDS; i++)
     {
-        records[i].id = -1;
-        records[i].name = malloc(NAME_SIZE * sizeof(char));
+        g_database[i].id = -1;
+        g_database[i].name = malloc(NAME_SIZE * sizeof(char));
     }
 
-    records[0].id = 0;
-    strcpy(records[0].name, "Kowalski");
-    records[1].id = 1;
-    strcpy(records[1].name, "Nowak");
-    records[2].id = 2;
-    strcpy(records[2].name, "Wisniewski");
-
-    return records;
+    g_database[0].id = 0;
+    strcpy(g_database[0].name, "Kowalski");
+    g_database[1].id = 1;
+    strcpy(g_database[1].name, "Nowak");
+    g_database[2].id = 2;
+    strcpy(g_database[2].name, "Wisniewski");
 }
 
-char* getRecordById(record* records, int recordId)
+char* getRecordById(int recordId)
 {
     for (int i = 0; i < DATABASE_RECORDS; i++)
     {
-        if (records[i].id == recordId)
+        if (g_database[i].id == recordId)
         {
-            return records[i].name;
+            return g_database[i].name;
         }
     }
 
     return "Not found!";
 }
 
-request receiveRequest(int fifoHandle, int requestSize)
+request* receiveRequest(int fifoHandle, int requestSize)
 {
     void* buffer = malloc(requestSize);
-    read(fifoHandle, buffer, requestSize);
+    request* req = malloc(requestSize);
+    req->homepath = malloc(requestSize - sizeof(req->id));
 
-    request req;
-    req.homepath = malloc(requestSize - sizeof(req.id));
-    memcpy(&req.id, buffer, sizeof(req.id));
-    memcpy(req.homepath, buffer + sizeof(req.id), requestSize - sizeof(req.id));
+    read(fifoHandle, buffer, requestSize);
+    memcpy(&req->id, buffer, sizeof(req->id));
+    memcpy(req->homepath, buffer + sizeof(req->id), requestSize - sizeof(req->id));
 
     free(buffer);
     return req;
 }
 
-void handleRequest(request* req, record* recordsDatabase)
+void handleRequest(request* req)
 {
     printf("## Received request from: %s \n", req->homepath);
     printf("- requested record ID: %i \n", req->id);
-    printf("- requested content  : %s \n", getRecordById(recordsDatabase, req->id));
+    printf("- requested content  : %s \n", getRecordById(req->id));
     printf("\n");
 }
 
-void waitForRequests(int fifoHandle, record* recordsDatabase)
+void waitForRequests(int fifoHandle)
 {
     while (1)
     {
         int requestLength = 0;
         if (read(fifoHandle, &requestLength, sizeof(int)) > 0)
         {
-            request req = receiveRequest(fifoHandle, requestLength);
-            handleRequest(&req, recordsDatabase);
+            request* req = receiveRequest(fifoHandle, requestLength);
+            handleRequest(req);
         }
     }
 }
 
 int main()
 {
-    record* recordsDatabase = getDatabase();
+    initializeDatabase();
 
     mkfifo(CLIENT_FIFO, 0666);
     int fifoHandle = open(CLIENT_FIFO, O_RDONLY);
 
-    waitForRequests(fifoHandle, recordsDatabase);
+    waitForRequests(fifoHandle);
 }
