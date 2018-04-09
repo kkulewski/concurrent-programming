@@ -81,10 +81,10 @@ void waitForRequests(int fifoHandle)
 {
     while (1)
     {
-        int requestLength = 0;
-        if (read(fifoHandle, &requestLength, sizeof(int)) > 0)
+        int requestSize = 0;
+        if (read(fifoHandle, &requestSize, sizeof(int)) > 0)
         {
-            request* req = receiveRequest(fifoHandle, requestLength);
+            request* req = receiveRequest(fifoHandle, requestSize);
             handleRequest(req);
         }
     }
