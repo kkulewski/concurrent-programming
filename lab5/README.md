@@ -12,3 +12,10 @@ Run:
 `./server`
 
 `./client {ID}`
+
+
+### Related
+
+Make FIFO:
+
+`mkfifo {NAME}`
