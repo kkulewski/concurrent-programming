@@ -8,7 +8,7 @@
 #define CLIENT_FIFO "client_fifo"
 #define SERVER_FIFO "server_fifo"
 
-#define DATABASE_RECORDS 3
+#define DATABASE_RECORDS 20
 #define NAME_SIZE 20
 
 typedef struct request_t
@@ -49,11 +49,27 @@ void initializeDatabase()
     }
 
     g_database[0].id = 0;
-    strcpy(g_database[0].name, "Kowalski");
+    strcpy(g_database[0].name, "Smith");
     g_database[1].id = 1;
-    strcpy(g_database[1].name, "Nowak");
+    strcpy(g_database[1].name, "Johnson");
     g_database[2].id = 2;
-    strcpy(g_database[2].name, "Wisniewski");
+    strcpy(g_database[2].name, "Williams");
+    g_database[3].id = 3;
+    strcpy(g_database[3].name, "Brown");
+    g_database[4].id = 4;
+    strcpy(g_database[4].name, "Jones");
+    g_database[5].id = 5;
+    strcpy(g_database[5].name, "Miller");
+    g_database[6].id = 6;
+    strcpy(g_database[6].name, "Davis");
+    g_database[7].id = 7;
+    strcpy(g_database[7].name, "Garcia");
+    g_database[8].id = 8;
+    strcpy(g_database[8].name, "Rodriguez");
+    g_database[9].id = 9;
+    strcpy(g_database[9].name, "Wilson");
+    g_database[10].id = 10;
+    strcpy(g_database[10].name, "Martinez");
 }
 
 char* getNameByRecordId(int recordId)
