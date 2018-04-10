@@ -119,23 +119,26 @@ void handleRequest(int serverFifoHandle, int requestSize)
 
 void waitForRequests()
 {
-    int serverFifoHandle = open(SERVER_FIFO, O_RDONLY);
-
+    int fifo = open(SERVER_FIFO, O_RDONLY);
     while (1)
     {
         int requestPayloadSize = 0;
-        if (read(serverFifoHandle, &requestPayloadSize, sizeof(int)) > 0)
+        if (read(fifo, &requestPayloadSize, sizeof(int)) > 0)
         {
-            handleRequest(serverFifoHandle, requestPayloadSize);
+            handleRequest(fifo, requestPayloadSize);
         }
     }
 }
 
-int main()
+void initializeFifo()
 {
     mkfifo(SERVER_FIFO, 0666);
     mkfifo(CLIENT_FIFO, 0666);
+}
 
+int main()
+{
+    initializeFifo();
     initializeDatabase();
     waitForRequests();
 }

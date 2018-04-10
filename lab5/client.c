@@ -65,9 +65,11 @@ response* receiveResponse(int clientFifoHandle, int responsePayloadSize)
 void handleResponse(int clientFifoHandle)
 {
     int responsePayloadSize = 0;
-    read(clientFifoHandle, &responsePayloadSize, sizeof(responsePayloadSize));
-    response* res = receiveResponse(clientFifoHandle, responsePayloadSize);
-    printf("%s\n", res->name);
+    if (read(clientFifoHandle, &responsePayloadSize, sizeof(responsePayloadSize)) > 0)
+    {
+        response* res = receiveResponse(clientFifoHandle, responsePayloadSize);
+        printf("%s\n", res->name);
+    }
 }
 
 int main(int argc, char * argv[])
