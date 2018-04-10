@@ -16,7 +16,7 @@ Run:
 
 List IPC queues:
 
-`ipcs -queues`
+`ipcs -q`
 
 Remove IPC queue:
 
