@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/stat.h>
 
 #define CLIENT_FIFO "client_fifo"
@@ -152,8 +153,18 @@ void initializeFifo()
     mkfifo(CLIENT_FIFO, 0666);
 }
 
-int main()
+void cleanup(int signal)
 {
+    remove(SERVER_FIFO);
+    remove(CLIENT_FIFO);
+    exit(0);
+}
+
+int main()
+{    
+    // trap SIGINT (Ctrl+C) to run cleanup
+    signal(SIGINT, cleanup);
+
     initializeFifo();
     initializeDatabase();
     waitForRequests();
