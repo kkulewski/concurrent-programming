@@ -11,7 +11,7 @@ int main()
     struct sockaddr_in recipient;
     int size = sizeof(struct sockaddr_in);
     recipient.sin_family = AF_INET;
-    recipient.sin_port = htons(SERVER_PORT);
+    recipient.sin_port = htons((ushort) SERVER_PORT);
     inet_pton(PF_INET, SERVER_IP, &recipient.sin_addr);
 
     int socket_descriptor = socket(PF_INET, SOCK_DGRAM, 0);
