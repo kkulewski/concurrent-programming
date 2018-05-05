@@ -1,4 +1,4 @@
-## Cient - Server communication using IPC queues
+## Client - Server communication using IPC queues
 Compile:
 
 `gcc -o client client.c`
