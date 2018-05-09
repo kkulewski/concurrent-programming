@@ -12,13 +12,13 @@ int main()
     int size = sizeof(struct sockaddr_in);
     recipient.sin_family = AF_INET;
     recipient.sin_port = htons((ushort) SERVER_PORT);
-    inet_pton(PF_INET, SERVER_IP, &recipient.sin_addr);
+    inet_pton(AF_INET, SERVER_IP, &recipient.sin_addr);
 
     int socket_descriptor = socket(PF_INET, SOCK_DGRAM, 0);
     bind(socket_descriptor, (struct sockaddr*) &recipient, size);
 
     int value = 0;
-    printf("Provide value:\n");
+    printf("Provide value: ");
     scanf("%d", &value);
     value = htonl(value);
     sendto(socket_descriptor, (char*) &value, sizeof(int), 0, (struct sockaddr*) &recipient, size);
