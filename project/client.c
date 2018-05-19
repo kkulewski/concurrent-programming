@@ -3,7 +3,8 @@
 #include<stdlib.h>
 #include<string.h>
 
-#define BOARD_SIZE 10
+#define GAME_SHIPS 6
+#define BOARD_SIZE 8
 #define CELL_SIZE_PX 25
 #define BOARD_SIZE_PX BOARD_SIZE * CELL_SIZE_PX
 #define BOARD_X_MARGIN 25
@@ -47,14 +48,10 @@ void init_boards()
       e_board[i][j] = FIELD_EMPTY;
     }
   }
-
-  /* add example player ships */
-  p_board[2][3] = FIELD_SHIP;
-  p_board[3][3] = FIELD_SHIP;
-  p_board[7][1] = FIELD_SHIP;
-  p_board[8][1] = FIELD_SHIP;
-  p_board[9][1] = FIELD_SHIP;
   /* add example enemy ships */
+  e_board[4][4] = FIELD_SHIP;
+  e_board[1][2] = FIELD_SHIP;
+  e_board[2][2] = FIELD_SHIP;
   e_board[4][6] = FIELD_SHIP;
   e_board[5][6] = FIELD_SHIP;
   e_board[6][6] = FIELD_SHIP;
@@ -254,6 +251,43 @@ int make_move(coords_t selected_cell)
   }
 }
 
+int setup_ship(coords_t selected_cell)
+{
+  printf("TARGET: B:%i X:%i Y:%i\n", selected_cell.board, selected_cell.x, selected_cell.y);
+
+  if (selected_cell.board == BOARD_NONE)
+  {
+    printf("RESULT: none - no board\n");
+    status_message = "Illegal move - no board";
+    return 0;
+  }
+
+  if (selected_cell.board == BOARD_ENEMY)
+  {
+    printf("RESULT: none - enemy board\n");
+    status_message = "Illegal move - enemy board";
+    return 0;
+  }
+
+  int field = p_board[selected_cell.x][selected_cell.y];
+  if (selected_cell.board == BOARD_PLAYER)
+  {
+    if (field == FIELD_EMPTY)
+    {
+      p_board[selected_cell.x][selected_cell.y] = FIELD_SHIP;
+      printf("RESULT: ship added\n");
+      status_message = "Ship added!";
+      return 1;
+    }
+    if (field == FIELD_SHIP)
+    {
+      printf("RESULT: field occupied\n");
+      status_message = "Field is already occupied!";
+      return 0;
+    }
+  }
+}
+
 void init_display()
 {
   /* open connection with the server */
@@ -300,44 +334,71 @@ void dispose_display()
   XCloseDisplay(display);
 }
 
-int main()
+int setup_loop()
 {
-  init_display();
-  init_boards();
-  status_message = "Hello!";
+  status_message = "Setup your ships.";
+  int ships = GAME_SHIPS;
+  while (ships > 0)
+  {
+    draw_boards();
+    XNextEvent(display, &event);
+    printf("Event:: ");
+    if(event.type == Expose)
+    {
+      printf("exposed\n");
+    }
+    if(event.type == ButtonPress)
+    {
+      printf("mouse pressed X:%i Y:%i\n", event.xbutton.x, event.xbutton.y);
+      int result = setup_ship(get_cell_by_xy(event.xbutton.x, event.xbutton.y));
+      ships -= result;
+    }
+    if(event.type == ClientMessage)
+    {
+      printf("window closed\n");
+      return -1;
+    }
+  }
+}
 
-  /* event loop */
+void game_loop()
+{
+  status_message = "Game started. Select field to shoot at.";
   while(1)
   {
     draw_boards();
     XNextEvent(display, &event);
     printf("Event:: ");
-
-    /* draw or redraw the window */
     if(event.type == Expose)
     {
-      //XFillRectangle(display, window, gc, 20, 20, 10, 10);
       printf("exposed\n");
     }
-    /* print mouse click location */
     if(event.type == ButtonPress)
     {
       printf("mouse pressed X:%i Y:%i\n", event.xbutton.x, event.xbutton.y);
       make_move(get_cell_by_xy(event.xbutton.x, event.xbutton.y));
     }
-    /* print key pressed */
-    if (event.type == KeyPress)
-    {
-      printf("key pressed\n");
-    }
-    /* handle windows close event */
     if(event.type == ClientMessage)
     {
       printf("window closed\n");
-      break;
+      return;
     }
   }
+}
 
+int main()
+{
+  init_display();
+  init_boards();
+
+  int game_state = setup_loop();
+  if (game_state == -1)
+  {
+    dispose_display();
+    return 0;
+  }
+
+  game_loop();
   dispose_display();
   return 0;
 }
