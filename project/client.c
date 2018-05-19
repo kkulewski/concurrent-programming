@@ -28,6 +28,8 @@ Window window;
 int screen;
 GC gc;
 XEvent event;
+Colormap colormap;
+XColor color, exact_color;
 
 // game global variables
 int p_board[BOARD_SIZE][BOARD_SIZE];
@@ -52,66 +54,72 @@ void init_boards()
   p_board[9][1] = FIELD_SHIP;
   /* add example enemy ships */
   e_board[4][6] = FIELD_SHIP;
-  p_board[5][6] = FIELD_SHIP;
-  p_board[6][6] = FIELD_SHIP;
+  e_board[5][6] = FIELD_SHIP;
+  e_board[6][6] = FIELD_SHIP;
+}
+
+void draw_grid()
+{
+  XAllocNamedColor(display, colormap, "blue", &color, &exact_color);
+  XSetForeground(display, gc, color.pixel);
+
+  int x1, y1, x2, y2;
+  int offset_x = BOARD_SIZE_PX + BOARD_X_MARGIN;
+  for (int i = 0; i < BOARD_SIZE + 1; i++)
+  {
+    // horizontal lines
+    x1 = BOARD_X_MARGIN;
+    y1 = BOARD_Y_MARGIN + i * CELL_SIZE_PX;
+    x2 = BOARD_X_MARGIN + BOARD_SIZE_PX;
+    y2 = BOARD_Y_MARGIN + i * CELL_SIZE_PX;
+    XDrawLine(display, window, gc, x1, y1, x2, y2);
+    XDrawLine(display, window, gc, x1 + offset_x, y1, x2 + offset_x, y2);
+
+    // vertical lines
+    x1 = BOARD_X_MARGIN + i * CELL_SIZE_PX;
+    y1 = BOARD_Y_MARGIN;
+    x2 = BOARD_X_MARGIN + i * CELL_SIZE_PX;
+    y2 = BOARD_Y_MARGIN + BOARD_SIZE_PX;
+    XDrawLine(display, window, gc, x1, y1, x2, y2);
+    XDrawLine(display, window, gc, x1 + offset_x, y1, x2 + offset_x, y2);
+  }
 }
 
 void draw_p_board()
 {
-    Colormap colormap = DefaultColormap(display, screen);
-    XColor color, exact_color;
-
-    XAllocNamedColor(display, colormap, "blue", &color, &exact_color);
-    XSetForeground(display, gc, color.pixel);
-    for (int i = 0; i < BOARD_SIZE + 1; i++)
+  for (int i = 0; i < BOARD_SIZE; i++)
+  {
+    for (int j = 0; j < BOARD_SIZE; j++)
     {
-      // horizontal lines
-      XDrawLine(display, window, gc, BOARD_X_MARGIN, BOARD_Y_MARGIN + i * CELL_SIZE_PX, BOARD_X_MARGIN + BOARD_SIZE_PX, BOARD_Y_MARGIN + i * CELL_SIZE_PX);
-      // vertical lines
-      XDrawLine(display, window, gc, BOARD_X_MARGIN + i * CELL_SIZE_PX, BOARD_Y_MARGIN, BOARD_X_MARGIN + i * CELL_SIZE_PX, BOARD_Y_MARGIN + BOARD_SIZE_PX);
-    }
-
-    for (int i = 0; i < BOARD_SIZE; i++)
-    {
-      for (int j = 0; j < BOARD_SIZE; j++)
+      switch (p_board[i][j])
       {
-        switch (p_board[i][j])
-        {
-          case FIELD_EMPTY:
-              XAllocNamedColor(display, colormap, "white", &color, &exact_color);
-              break;
-          case FIELD_SHIP:
-              XAllocNamedColor(display, colormap, "green", &color, &exact_color);
-              break;
-          case FIELD_MISS:
-              XAllocNamedColor(display, colormap, "gray", &color, &exact_color);
-              break;
-          case FIELD_HIT:
-              XAllocNamedColor(display, colormap, "red", &color, &exact_color);
-              break;
-        }
-
-        XSetForeground(display, gc, color.pixel);
-        XFillRectangle(display, window, gc, BOARD_X_MARGIN + i * CELL_SIZE_PX + 1, BOARD_Y_MARGIN + j * CELL_SIZE_PX + 1, CELL_SIZE_PX - 1, CELL_SIZE_PX - 1);
+        case FIELD_EMPTY:
+        XAllocNamedColor(display, colormap, "white", &color, &exact_color);
+        break;
+        case FIELD_SHIP:
+        XAllocNamedColor(display, colormap, "green", &color, &exact_color);
+        break;
+        case FIELD_MISS:
+        XAllocNamedColor(display, colormap, "gray", &color, &exact_color);
+        break;
+        case FIELD_HIT:
+        XAllocNamedColor(display, colormap, "red", &color, &exact_color);
+        break;
       }
+
+      XSetForeground(display, gc, color.pixel);
+      int x1 = BOARD_X_MARGIN + i * CELL_SIZE_PX + 1;
+      int y1 = BOARD_Y_MARGIN + j * CELL_SIZE_PX + 1;
+      int width = CELL_SIZE_PX - 1;
+      int height = CELL_SIZE_PX - 1;
+      XFillRectangle(display, window, gc, x1, y1, width, height);
     }
+  }
 }
 
 void draw_e_board()
 {
-  Colormap colormap = DefaultColormap(display, screen);
-  XColor color, exact_color;
-
-  XAllocNamedColor(display, colormap, "blue", &color, &exact_color);
-  XSetForeground(display, gc, color.pixel);
-  for (int i = 0; i < BOARD_SIZE + 1; i++)
-  {
-    // horizontal lines
-    XDrawLine(display, window, gc, BOARD_X_MARGIN, BOARD_Y_MARGIN + i * CELL_SIZE_PX, BOARD_X_MARGIN + BOARD_SIZE_PX, BOARD_Y_MARGIN + i * CELL_SIZE_PX);
-    // vertical lines
-    XDrawLine(display, window, gc, BOARD_X_MARGIN + i * CELL_SIZE_PX, BOARD_Y_MARGIN, BOARD_X_MARGIN + i * CELL_SIZE_PX, BOARD_Y_MARGIN + BOARD_SIZE_PX);
-  }
-
+  int offset_x = BOARD_SIZE_PX + BOARD_X_MARGIN;
   for (int i = 0; i < BOARD_SIZE; i++)
   {
     for (int j = 0; j < BOARD_SIZE; j++)
@@ -119,27 +127,32 @@ void draw_e_board()
       switch (e_board[i][j])
       {
         case FIELD_EMPTY:
-            XAllocNamedColor(display, colormap, "white", &color, &exact_color);
-            break;
+          XAllocNamedColor(display, colormap, "white", &color, &exact_color);
+          break;
         case FIELD_SHIP:
-            XAllocNamedColor(display, colormap, "white", &color, &exact_color);
-            break;
+          XAllocNamedColor(display, colormap, "white", &color, &exact_color);
+          break;
         case FIELD_MISS:
-            XAllocNamedColor(display, colormap, "gray", &color, &exact_color);
-            break;
+          XAllocNamedColor(display, colormap, "gray", &color, &exact_color);
+          break;
         case FIELD_HIT:
-            XAllocNamedColor(display, colormap, "red", &color, &exact_color);
-            break;
+          XAllocNamedColor(display, colormap, "red", &color, &exact_color);
+          break;
       }
 
       XSetForeground(display, gc, color.pixel);
-      XFillRectangle(display, window, gc, BOARD_X_MARGIN + i * CELL_SIZE_PX + 1, BOARD_Y_MARGIN + j * CELL_SIZE_PX + 1, CELL_SIZE_PX - 1, CELL_SIZE_PX - 1);
+      int x1 = BOARD_X_MARGIN + i * CELL_SIZE_PX + 1;
+      int y1 = BOARD_Y_MARGIN + j * CELL_SIZE_PX + 1;
+      int width = CELL_SIZE_PX - 1;
+      int height = CELL_SIZE_PX - 1;
+      XFillRectangle(display, window, gc, x1 + offset_x, y1, width, height);
     }
   }
 }
 
 void draw_boards()
 {
+  draw_grid();
   draw_p_board();
   draw_e_board();
   XFlush(display);
@@ -151,15 +164,15 @@ coords_t get_cell_by_xy(int x, int y)
   int cell_x = 0;
   int cell_y = 0;
 
-  if (x >= BOARD_X_MARGIN && x <= BOARD_SIZE + BOARD_X_MARGIN)
+  if (x >= BOARD_X_MARGIN && x <= BOARD_SIZE_PX + BOARD_X_MARGIN && y >= BOARD_Y_MARGIN && y <= BOARD_Y_MARGIN + BOARD_SIZE_PX)
   {
     board = BOARD_PLAYER;
   }
 
-  if (x >= BOARD_SIZE + 2 * BOARD_X_MARGIN && x <= 2 * BOARD_SIZE + 2 * BOARD_X_MARGIN)
+  if (x >= BOARD_SIZE_PX + 2 * BOARD_X_MARGIN && x <= 2 * BOARD_SIZE_PX + 2 * BOARD_X_MARGIN && y >= BOARD_Y_MARGIN && y <= BOARD_Y_MARGIN + BOARD_SIZE_PX)
   {
     board = BOARD_ENEMY;
-    x -= (BOARD_SIZE + BOARD_X_MARGIN);
+    x -= (BOARD_SIZE_PX + BOARD_X_MARGIN);
   }
 
   cell_x = (x - BOARD_X_MARGIN) / CELL_SIZE_PX;
@@ -170,10 +183,37 @@ coords_t get_cell_by_xy(int x, int y)
 
 int make_move(coords_t selected_cell)
 {
+  printf("TARGET: B:%i X:%i Y:%i\n", selected_cell.board, selected_cell.x, selected_cell.y);
 
+  if (selected_cell.board == BOARD_NONE)
+  {
+    printf("RESULT: none\n");
+    return BOARD_NONE;
+  }
+
+  if (selected_cell.board == BOARD_PLAYER)
+  {
+    printf("RESULT: own board\n");
+    return BOARD_PLAYER;
+  }
+
+  int field = e_board[selected_cell.x][selected_cell.y];
+  if (selected_cell.board == BOARD_ENEMY)
+  {
+    if (field == FIELD_EMPTY || field == FIELD_MISS)
+    {
+      e_board[selected_cell.x][selected_cell.y] = FIELD_MISS;
+      printf("RESULT: miss\n");
+    }
+    if (field == FIELD_SHIP || field == FIELD_HIT)
+    {
+      e_board[selected_cell.x][selected_cell.y] = FIELD_HIT;
+      printf("RESULT: hit\n");
+    }
+  }
 }
 
-int main()
+void init_display()
 {
   /* open connection with the server */
   display = XOpenDisplay(NULL);
@@ -182,7 +222,6 @@ int main()
     printf("Cannot open display\n");
     exit(1);
   }
-
   /* set screen */
   screen = DefaultScreen(display);
   /* set GC */
@@ -193,7 +232,7 @@ int main()
     RootWindow(display, screen),
     0,
     0,
-    2 * (BOARD_SIZE_PX + 2 * BOARD_X_MARGIN),
+    2 * (BOARD_SIZE_PX + BOARD_X_MARGIN) + BOARD_X_MARGIN,
     BOARD_SIZE_PX + 2 * BOARD_Y_MARGIN,
     1,
     BlackPixel(display, screen),
@@ -208,8 +247,21 @@ int main()
   XSelectInput(display, window, ExposureMask | KeyPressMask | ButtonPressMask);
   /* map (show) the window */
   XMapWindow(display, window);
+  /* get colormap */
+  colormap = DefaultColormap(display, screen);
+}
 
-  /* create game boards */
+void dispose_display()
+{
+  /* destroy our window */
+  XDestroyWindow(display, window);
+  /* close connection to server */
+  XCloseDisplay(display);
+}
+
+int main()
+{
+  init_display();
   init_boards();
 
   /* event loop */
@@ -229,18 +281,7 @@ int main()
     if(event.type == ButtonPress)
     {
       printf("mouse pressed X:%i Y:%i\n", event.xbutton.x, event.xbutton.y);
-      coords_t selected_cell = get_cell_by_xy(event.xbutton.x, event.xbutton.y);
-      printf("cell B:%i X:%i Y:%i\n", selected_cell.board, selected_cell.x, selected_cell.y);
-
-      int field = p_board[selected_cell.x][selected_cell.y];
-      if (field == FIELD_EMPTY || field == FIELD_MISS)
-      {
-        p_board[selected_cell.x][selected_cell.y] = FIELD_MISS;
-      }
-      if (field == FIELD_SHIP || field == FIELD_HIT)
-      {
-        p_board[selected_cell.x][selected_cell.y] = FIELD_HIT;
-      }
+      make_move(get_cell_by_xy(event.xbutton.x, event.xbutton.y));
     }
     /* print key pressed */
     if (event.type == KeyPress)
@@ -255,9 +296,6 @@ int main()
     }
   }
 
-  /* destroy our window */
-  XDestroyWindow(display, window);
-  /* close connection to server */
-  XCloseDisplay(display);
+  dispose_display();
   return 0;
 }
