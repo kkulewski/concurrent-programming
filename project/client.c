@@ -8,8 +8,8 @@
 
 #define CELL_SIZE_PX 25
 #define BOARD_SIZE_PX BOARD_SIZE * CELL_SIZE_PX
-#define BOARD_X_MARGIN 25
-#define BOARD_Y_MARGIN 25
+#define BOARD_X_MARGIN 40
+#define BOARD_Y_MARGIN 40
 
 #define FIELD_EMPTY 0
 #define FIELD_SHIP 1
@@ -182,7 +182,7 @@ void draw_status()
   XAllocNamedColor(display, colormap, "green", &color, &exact_color);
   XSetForeground(display, gc, color.pixel);
   int x = 0;
-  int y = BOARD_SIZE_PX + BOARD_Y_MARGIN + 5;
+  int y = BOARD_SIZE_PX + BOARD_Y_MARGIN + 15;
   int width = (BOARD_SIZE_PX + BOARD_X_MARGIN) * 2 + BOARD_X_MARGIN;
   int height = BOARD_Y_MARGIN;
   XFillRectangle(display, window, gc, x, y, width, height);
@@ -191,7 +191,7 @@ void draw_status()
   XAllocNamedColor(display, colormap, "black", &color, &exact_color);
   XSetForeground(display, gc, color.pixel);
   x = BOARD_X_MARGIN;
-  y = BOARD_SIZE_PX + BOARD_Y_MARGIN * 2 - 3;
+  y = BOARD_SIZE_PX + BOARD_Y_MARGIN * 2 - 8;
   XDrawString(display, window, gc, x, y, status_message, strlen(status_message));
 }
 
