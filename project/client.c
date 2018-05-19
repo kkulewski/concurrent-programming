@@ -1,6 +1,7 @@
 #include<X11/Xlib.h>
 #include<stdio.h>
 #include<stdlib.h>
+#include<string.h>
 
 #define BOARD_SIZE 10
 #define CELL_SIZE_PX 20
@@ -34,6 +35,7 @@ XColor color, exact_color;
 // game global variables
 int p_board[BOARD_SIZE][BOARD_SIZE];
 int e_board[BOARD_SIZE][BOARD_SIZE];
+char* status_message;
 
 void init_boards()
 {
@@ -150,11 +152,46 @@ void draw_e_board()
   }
 }
 
+void draw_titles()
+{
+  XAllocNamedColor(display, colormap, "black", &color, &exact_color);
+  XSetForeground(display, gc, color.pixel);
+
+  char* title = "Your board:";
+  int x = BOARD_X_MARGIN;
+  int y = BOARD_Y_MARGIN - 5;
+  XDrawString(display, window, gc, x, y, title, strlen(title));
+
+  title = "Enemy board:";
+  x = BOARD_X_MARGIN * 2 + BOARD_SIZE_PX;
+  y = BOARD_Y_MARGIN - 5;
+  XDrawString(display, window, gc, x, y, title, strlen(title));
+}
+
+void draw_status()
+{
+  XAllocNamedColor(display, colormap, "green", &color, &exact_color);
+  XSetForeground(display, gc, color.pixel);
+  int x = 0;
+  int y = BOARD_SIZE_PX + BOARD_Y_MARGIN + 5;
+  int width = (BOARD_SIZE_PX + BOARD_X_MARGIN) * 2 + BOARD_X_MARGIN;
+  int height = BOARD_Y_MARGIN;
+  XFillRectangle(display, window, gc, x, y, width, height);
+
+  XAllocNamedColor(display, colormap, "black", &color, &exact_color);
+  XSetForeground(display, gc, color.pixel);
+  x = BOARD_X_MARGIN;
+  y = BOARD_SIZE_PX + BOARD_Y_MARGIN * 2 - 3;
+  XDrawString(display, window, gc, x, y, status_message, strlen(status_message));
+}
+
 void draw_boards()
 {
   draw_grid();
   draw_p_board();
   draw_e_board();
+  draw_titles();
+  draw_status();
   XFlush(display);
 }
 
@@ -187,13 +224,15 @@ int make_move(coords_t selected_cell)
 
   if (selected_cell.board == BOARD_NONE)
   {
-    printf("RESULT: none\n");
+    printf("RESULT: none - no board\n");
+    status_message = "Illegal move - no board";
     return BOARD_NONE;
   }
 
   if (selected_cell.board == BOARD_PLAYER)
   {
-    printf("RESULT: own board\n");
+    printf("RESULT: none - own board\n");
+    status_message = "Illegal move - own board";
     return BOARD_PLAYER;
   }
 
@@ -204,11 +243,13 @@ int make_move(coords_t selected_cell)
     {
       e_board[selected_cell.x][selected_cell.y] = FIELD_MISS;
       printf("RESULT: miss\n");
+      status_message = "Missed!";
     }
     if (field == FIELD_SHIP || field == FIELD_HIT)
     {
       e_board[selected_cell.x][selected_cell.y] = FIELD_HIT;
       printf("RESULT: hit\n");
+      status_message = "Enemy hit!";
     }
   }
 }
@@ -263,6 +304,7 @@ int main()
 {
   init_display();
   init_boards();
+  status_message = "Hello!";
 
   /* event loop */
   while(1)
@@ -274,7 +316,7 @@ int main()
     /* draw or redraw the window */
     if(event.type == Expose)
     {
-      //XFillRectangle(d, w, DefaultGC(d, s), 20, 20, 10, 10);
+      //XFillRectangle(display, window, gc, 20, 20, 10, 10);
       printf("exposed\n");
     }
     /* print mouse click location */
