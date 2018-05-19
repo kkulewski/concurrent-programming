@@ -4,10 +4,10 @@
 #include<string.h>
 
 #define BOARD_SIZE 10
-#define CELL_SIZE_PX 20
+#define CELL_SIZE_PX 25
 #define BOARD_SIZE_PX BOARD_SIZE * CELL_SIZE_PX
-#define BOARD_X_MARGIN 20
-#define BOARD_Y_MARGIN 20
+#define BOARD_X_MARGIN 25
+#define BOARD_Y_MARGIN 25
 
 #define FIELD_EMPTY 0
 #define FIELD_SHIP 1
