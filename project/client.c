@@ -2,6 +2,8 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include<sys/shm.h>
+#include<signal.h>
 
 #define GAME_SHIPS 6
 #define BOARD_SIZE 8
@@ -19,6 +21,9 @@
 #define BOARD_NONE 0
 #define BOARD_PLAYER 1
 #define BOARD_ENEMY 2
+
+#define SHARED_KEY_1 9123
+#define SHARED_KEY_2 9124
 
 typedef enum { false, true } bool;
 
@@ -38,28 +43,71 @@ Colormap colormap;
 XColor color, exact_color;
 
 // game global variables
-int player_board[BOARD_SIZE][BOARD_SIZE];
-int enemy_board[BOARD_SIZE][BOARD_SIZE];
+int** player_board;
+int** enemy_board;
 char* status_message;
+int player_id;
+int shm_board1_id;
+int shm_board2_id;
 
-/* initialize boards */
-void init_boards()
+int init_shared_state()
 {
+  /* first player to create shared_memory_1 becomes player 1 */
+  if ((shm_board1_id = shmget(SHARED_KEY_1, 1024, 0666 | IPC_CREAT | IPC_EXCL)) != -1)
+  {
+    player_id = 1;
+    shm_board2_id = shmget(SHARED_KEY_2, 1024, 0666 | IPC_CREAT);
+    printf("Player ID: 1\n");
+  }
+  else
+  {
+    player_id = 2;
+    shm_board1_id = shmget(SHARED_KEY_1, 1024, 0666 | IPC_CREAT);
+    shm_board2_id = shmget(SHARED_KEY_2, 1024, 0666 | IPC_CREAT);
+    printf("Player ID: 2\n");
+  }
+
+  /* get shared memory */
+  int* shm_board_1 = shmat(shm_board1_id, 0, 0);
+  int* shm_board_2 = shmat(shm_board2_id, 0, 0);
+
+  /* allocate space for array of pointers */
+  player_board = malloc(BOARD_SIZE * sizeof(player_board[0]));
+  enemy_board = malloc(BOARD_SIZE * sizeof(enemy_board[0]));
+
+  /* make each pointer in board array point to shared memory */
   for (int i = 0; i < BOARD_SIZE; i++)
   {
-    for (int j = 0; j < BOARD_SIZE; j++)
+    if (player_id == 1)
     {
-      player_board[i][j] = FIELD_EMPTY;
-      enemy_board[i][j] = FIELD_EMPTY;
+      player_board[i] = shm_board_1 + i * BOARD_SIZE;
+      enemy_board[i] = shm_board_2 + i * BOARD_SIZE;
+    }
+    if (player_id == 2)
+    {
+      player_board[i] = shm_board_2 + i * BOARD_SIZE;
+      enemy_board[i] = shm_board_1 + i * BOARD_SIZE;
     }
   }
-  /* add example enemy ships */
-  enemy_board[4][4] = FIELD_SHIP;
-  enemy_board[1][2] = FIELD_SHIP;
-  enemy_board[2][2] = FIELD_SHIP;
-  enemy_board[4][6] = FIELD_SHIP;
-  enemy_board[5][6] = FIELD_SHIP;
-  enemy_board[6][6] = FIELD_SHIP;
+
+  /* player 1 is responsible for initialization */
+  if (player_id == 1)
+  {
+    for (int i = 0; i < BOARD_SIZE; i++)
+    {
+      for (int j = 0; j < BOARD_SIZE; j++)
+      {
+        player_board[i][j] = FIELD_EMPTY;
+        enemy_board[i][j] = FIELD_EMPTY;
+      }
+    }
+
+    /* for debugging */
+    player_board[5][5] = 1;
+  }
+
+  /* debugging - ensure fields are set properly */
+  printf("%i %i \n", player_board[0][2], player_board[5][5]);
 }
 
 /* draw player and enemy board grid */
@@ -414,10 +462,19 @@ void game_loop()
   }
 }
 
+void remove_shared_state(int signal)
+{
+  shmctl(shm_board1_id, IPC_RMID, 0);
+  shmctl(shm_board2_id, IPC_RMID, 0);
+  exit(0);
+}
+
 int main()
 {
+  signal(SIGINT, remove_shared_state);
+
   init_display();
-  init_boards();
+  init_shared_state();
 
   int state = setup_loop();
   if (state == -1)
