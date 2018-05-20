@@ -1,4 +1,5 @@
 #include<X11/Xlib.h>
+#include<X11/Xutil.h>
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -35,6 +36,8 @@ typedef struct coords_st {
   int y;
 } coords_t;
 
+struct timeval tv;
+
 // xlib global variables
 Display *display;
 Window window;
@@ -43,6 +46,7 @@ GC gc;
 XEvent event;
 Colormap colormap;
 XColor color, exact_color;
+int x11_file_descriptor;
 
 // game global variables
 char* status_message;
@@ -398,11 +402,13 @@ void init_display()
   /* grab mouse pointer location */
   XGrabPointer(display, window, False, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
   /* select kind of events we are interested in */
-  XSelectInput(display, window, ExposureMask | KeyPressMask | ButtonPressMask);
+  XSelectInput(display, window, ExposureMask | KeyPressMask | ButtonPressMask | StructureNotifyMask);
   /* map (show) the window */
   XMapWindow(display, window);
   /* get display colormap */
   colormap = DefaultColormap(display, screen);
+  /* display file descriptor */
+  x11_file_descriptor = ConnectionNumber(display);
 }
 
 /* dispose display */
@@ -423,20 +429,19 @@ int setup_loop()
   {
     draw_game_state();
     XNextEvent(display, &event);
-    printf("Event:: ");
     if(event.type == Expose)
     {
-      printf("exposed\n");
+      printf("Event:: exposed\n");
     }
     if(event.type == ButtonPress)
     {
-      printf("mouse pressed X:%i Y:%i\n", event.xbutton.x, event.xbutton.y);
+      printf("Event:: mouse pressed X:%i Y:%i\n", event.xbutton.x, event.xbutton.y);
       int added = add_ship(get_cell_by_xy(event.xbutton.x, event.xbutton.y));
       ships_to_add -= added;
     }
     if(event.type == ClientMessage)
     {
-      printf("window closed\n");
+      printf("Event:: window closed\n");
       return -1;
     }
   }
@@ -446,38 +451,57 @@ int setup_loop()
 /* in this phase, player selects fields on enemy board to shoot at */
 void game_loop()
 {
+  fd_set in_fds;
   status_message = "Game started. Select field to shoot at.";
   while(1)
   {
-    if (*player_turn == player_id)
+    // Create a file description set containing x11_fd
+    FD_ZERO(&in_fds);
+    FD_SET(x11_file_descriptor, &in_fds);
+
+    // Set our timer
+    tv.tv_usec = 0;
+    tv.tv_sec = 1;
+
+    // Wait for X Event or a Timer
+    int num_ready_fds = select(x11_file_descriptor + 1, &in_fds, NULL, NULL, &tv);
+    if (num_ready_fds == 0)
     {
-      status_message = "Your turn.";
-      draw_game_state();
+        // Handle timer here
+        if (*player_turn == player_id)
+        {
+          status_message = "Your turn.";
+          draw_game_state();
+        }
     }
 
-    XNextEvent(display, &event);
-    printf("Event:: ");
-    if(event.type == Expose)
+    // Handle XEvents and flush the input
+    while(XPending(display))
     {
-      printf("exposed\n");
-    }
-    if(event.type == ButtonPress)
-    {
-      if (*player_turn == player_id)
+      XNextEvent(display, &event);
+      if(event.type == Expose)
       {
-        printf("mouse pressed X:%i Y:%i\n", event.xbutton.x, event.xbutton.y);
-        int shoot_result = shoot_at(get_cell_by_xy(event.xbutton.x, event.xbutton.y));
-        if (shoot_result == BOARD_ENEMY)
-        {
-          *player_turn = enemy_id;
-        }
-        draw_game_state();
+        printf("Event:: exposed\n");
       }
-    }
-    if(event.type == ClientMessage)
-    {
-      printf("window closed\n");
-      return;
+      if(event.type == ButtonPress)
+      {
+        printf("Event:: mouse pressed X:%i Y:%i\n", event.xbutton.x, event.xbutton.y);
+        if (*player_turn == player_id)
+        {
+          int shoot_result = shoot_at(get_cell_by_xy(event.xbutton.x, event.xbutton.y));
+          if (shoot_result == BOARD_ENEMY)
+          {
+            *player_turn = enemy_id;
+          }
+          draw_game_state();
+        }
+      }
+      if(event.type == ClientMessage)
+      {
+        printf("Event:: window closed\n");
+        return;
+      }
+      XFlush(display);
     }
   }
 }
