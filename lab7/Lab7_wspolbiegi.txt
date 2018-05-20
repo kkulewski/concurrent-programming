@@ -1,0 +1,41 @@
+﻿PAMIĘĆ DZIELONA I SEMAFORY
+
+1. Utworzyć nieduży segment pamięci dzielonej i dołączyć go w dwóch różnych
+   miejscach do przestrzeni adresowej procesu. Sprawdzić, że umieszczona w nim
+   wartość jest widoczna pod dwoma różnymi adresami:
+
+                                                      ---------------------
+                                                      | *x                |
+                                                     /|                   |
+                                                    / |                   |
+                                                   /  |                   |
+                                          zapisy  /   ---------------------
+                                        i odczyty \   - - - - - - - - - - -
+                                                   \  | *y                |
+                                                    \ |                   |
+                                                     \|                   |
+                                                      |                   |
+                                                      - - - - - - - - - - -
+        Menu programu (w pętli):
+
+       - zapis *x
+       - zapis *y
+       - odczyt *x
+       - odczyt *y
+       - koniec programu
+
+2. (PODLEGA ODBIOROWI - CZAS 2 TYGODNIE)
+
+   Zaprogramowac grę w "kółko i krzyżyk" dla dwóch graczy (plansza - tablica
+   znakowa 3x3, wypełniona spacjami, znakami 'X' lub 'O'). Umieścić planszę
+   w pamięci dzielonej, zapewnić synchronizację dostępu przy użyciu pary
+   semaforów.
+
+   Należy ulepszyć rozwiązanie synchronizacji podane na wykładzie i zrobić
+   JEDEN (uniwersalny) program do użytku obu graczy - wstępną rywalizację
+   o wykonanie pierwszego ruchu (i używanie znaków 'X') wygrywa ten, kto
+   jako pierwszy utworzy tablicę semaforów (wskazówka: ...O_CREAT|O_EXCL ...).
+
+   Program powinien sprawdzać prawidłowość ruchów (wykluczać pola już zajęte
+   i poza planszą), rozpoznawać sytuację wygranej/przegranej/remisu i wyświetlać
+   obu graczom odpowiednie komunikaty.

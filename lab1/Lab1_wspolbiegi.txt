@@ -1,0 +1,79 @@
+﻿ZARZĄDZANIE PROCESAMI I KOMUNIKACJA PRZEZ WSPÓŁDZIELONE PLIKI W PROGRAMACH W BASH'U
+
+1. Utworzyć kilka (2 - 3) egzemplarzy skryptów w bash'u:
+
+   while true
+   do
+      echo ....(jakiś napis)....
+      sleep ....(liczba sekund)....
+   done
+   exit 0
+
+   Uruchomić je wszystkie w tle poleceniem o postaci
+
+      skrypt1 & skrypt2 & skrypt3 &
+
+   następnie po pewnym czasie po kolei je zatrzymać: a) przy użyciu poleceń
+   wydawanych w innym oknie tekstowym; b) przy użyciu poleceń wydawanych
+   w tym samym oknie tekstowym.
+
+
+2. W zespołach 2 - 3-osobowych wypróbować możliwość komunikacji przez współdzielony
+   plik: na koncie jednego z członków zespołu utworzyć pusty plik, przydzielić
+   odpowiednie prawa dostępu (do pliku i do katalogu domowego), następnie zapisywać
+   i odczytywać komunikaty przy użyciu poleceń o postaci:
+
+   echo ....(jakiś napis).... > plik      # zapisanie komunikatu
+
+   cat plik                               # odczytanie komunikatu
+
+   Sprawdzić, że jeżeli operator > zastąpimy operatorem >> , uzyskamy dopisywanie
+   komunikatów zamiast nadpisywania.
+
+   Wzbogacić rozwiązanie powyższego zadania przez utworzenie skryptu prostego
+   komunikatora tekstowego, który w pętli nieskończonej będzie oferował
+   użytkownikowi menu:
+
+                          0 - odczyt komunikatu
+                          1 - zapis komunikatu
+                          2 - koniec pracy
+
+   Skrypt powinien być wywoływany z argumentem równym pełnej nazwie ścieżkowej
+   pliku komunikacyjnego, np.:
+
+      rozmowa /home/studinf/....
+
+3. Napisać skrypt, który wyświetla PID swojego procesu, czeka kilka sekund,
+   następnie rekurencyjnie tworzy dwa nowe procesy współbieżne (w tle) i kończy
+   działanie.
+
+   UWAGA: ograniczyć głębokość wywołań rekurencyjnych do 5.
+
+4. (PODLEGA ODBIOROWI - CZAS 2 ZAJĘCIA)
+
+   Utworzyć prostą parę programów klient - serwer iteracyjny, komunikującą się
+   przez dwa pliki (dla danych i wyników), działającą na zasadzie ciągłego
+   odpytywania plików (w pętli aktywnego czekania).
+                                ----------
+    wczytanie                   |  dane  |
+    -------->|--------------|-->------------>|--------------|
+             |proces klienta|                |proces serwera|
+    <--------|--------------|<------------<--|--------------|
+    wyświetlenie                | wyniki |
+                                ----------
+
+    Klient pobiera z klawiatury i zapisuje do pliku dane pojedynczą liczbę
+    całkowitą. Serwer pobiera daną z pliku, oblicza jakąś prostą funkcję
+    arytmetyczną (np. nieduży wielomian) i wynik zapisuje do pliku wyniki.
+    Klient odbiera odpowiedź z pliku, wyświetla i kończy działanie. Serwer
+    działa nadal w pętli oczekując na kolejne zgłoszenia.
+
+    UWAGI:
+
+    1) Nie wprowadzać żadnych "sztucznych opóźnień" (sleep, wyświetlanie
+       tekstów przez serwer itp.).
+
+    2) Pamiętać o natychmiastowym (zaraz po odczytaniu) opróżnianiu buforów
+       po stronie serwera i po stronie klienta.
+
+    3) Uruchamiać najpierw serwer, a potem dopiero klienta.

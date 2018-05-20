@@ -1,0 +1,55 @@
+﻿KOMUNIKACJA PRZEZ WSPÓŁDZIELONE PLIKI W PROGRAMACH W JĘZYKU C
+
+1. Utworzyć w języku C parę programów producent-konsument korzystającą z pliku
+   jako wspólnego bufora (producent czyta znaki z klawiatury i dopisuje do pliku,
+   konsument pobiera z pliku i wyświetla). Wypróbować w zespołach dwuosobowych
+   (uzgadniając wspólny plik). Tekst wprowadzać i odczytywać całymi liniami.
+   Przyjąć, że znacznikiem końca przekazywanego tekstu jest kod Esc (27 w ASCII).
+
+UWAGA: operacje na pliku realizować nie przy użyciu funkcji ze standardu ANSI C,
+       ale przy użyciu rodzimych funkcji uniksowych. W tym celu przeczytać
+       najpierw opisy funkcji open(), close(), unlink(), read() i write()
+       (skojarzonych z plikami nagłówkowymi <fcntl.h> i <unistd.h>).
+
+2. (PODLEGA ODBIOROWI - CZAS 2 TYGODNIE)
+
+   Rozbudować powyższą parę programów tak, aby otrzymać parę klient-serwer
+   składającą się na prosty komunikator tekstowy. Nazwa bufora serwera: dane.
+   Nazwa bufora klienta: wyniki. Buforom przydzielić odpowiednie prawa dostępu
+   (na czas trwania ćwiczeń).
+
+   Serwer działa w pętli nieskończonej, klient tylko jednorazowo (pytanie -
+   odpowiedź). Program klienta jako parametr wywołania otrzymuje nazwę konta,
+   na którym działa serwer.
+
+   Klient przesyła do bufora serwera:
+
+      - nazwę swojego konta;
+      - kolejne linie swojego tekstu wprowadzonego przez użytkownika (dowolnie dużo);
+      - znacznik końca tekstu (kod Esc).
+
+   Serwer po przeczytaniu i wyświetleniu całego tekstu od klienta odsyła klientowi:
+
+      - kolejne linie swojego tekstu (wprowadzone ręcznie przez właściciela serwera);
+      - znacznik końca tekstu (kod Esc).
+
+   Dostęp do bufora serwera powinien być synchronizowany plikiem zamkowym (lockfile)
+   tworzonym przez klienta w katalogu roboczym serwera i usuwanym przez serwer po
+   udzieleniu odpowiedzi klientowi. Jeśli serwer czasowo nie jest dostępny, klient
+   wyświetla w pętli co kilka sekund: "Serwer zajęty, proszę czekać". Wykorzystać
+   w programie klienta następującą konstrukcję:
+
+   ...
+   
+   while (open("ścieżka_dostępu/lockfile",O_CREAT|O_EXCL,0)==-1) {
+      printf("Serwer zajety, prosze czekac\n");
+      sleep( ... );
+   }
+   
+   ...
+
+   Po udzieleniu odpowiedzi serwer usuwa utworzony przez klienta plik lockfile.
+
+UWAGA: programy należy uruchamiać bezpośrednio na sigmie, aby uniknąć opóźnień
+       związanych z działaniem sieciowego systemu plików. W przypadku wystąpienia
+       problemów przenieść bufory do katalogu /tmp i tam testować programy.
