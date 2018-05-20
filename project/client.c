@@ -442,6 +442,7 @@ int setup_loop()
     if(event.type == ClientMessage)
     {
       printf("Event:: window closed\n");
+      *player_turn = -1;
       return -1;
     }
   }
@@ -453,7 +454,7 @@ void game_loop()
 {
   fd_set in_fds;
   status_message = "Game started. Select field to shoot at.";
-  while(1)
+  while(*player_turn != -1)
   {
     // Create a file description set containing x11_fd
     FD_ZERO(&in_fds);
@@ -499,15 +500,21 @@ void game_loop()
       if(event.type == ClientMessage)
       {
         printf("Event:: window closed\n");
+        *player_turn = -1;
         return;
       }
       XFlush(display);
     }
   }
+
+  status_message = "You have won!";
+  draw_game_state();
+  XNextEvent(display, &event);
 }
 
 void remove_shared_state(int signal)
 {
+  *player_turn = -1;
   shmctl(shm_board1_id, IPC_RMID, 0);
   shmctl(shm_board2_id, IPC_RMID, 0);
   exit(0);
