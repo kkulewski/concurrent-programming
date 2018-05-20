@@ -7,8 +7,8 @@
 #include<signal.h>
 #include<unistd.h>
 
-#define GAME_SHIPS 6
-#define BOARD_SIZE 8
+#define SHIPS 3
+#define BOARD_SIZE 6
 
 #define CELL_SIZE_PX 25
 #define BOARD_SIZE_PX BOARD_SIZE * CELL_SIZE_PX
@@ -23,6 +23,7 @@
 #define BOARD_NONE 0
 #define BOARD_PLAYER 1
 #define BOARD_ENEMY 2
+#define GAME_SHIPS SHIPS * 2
 
 #define SHARED_KEY_1 9123
 #define SHARED_KEY_2 9124
@@ -56,6 +57,8 @@ char* status_message;
 int player_id;
 int enemy_id;
 int hits;
+int last_ship_x;
+int last_ship_y;
 
 struct timeval tv;
 int** player_board;
@@ -364,9 +367,11 @@ int shoot_at(coords_t selected_cell)
 }
 
 /* attempt to add ship on given field */
-int add_ship(coords_t selected_cell)
+int add_ship(coords_t selected_cell, bool second_ship_part)
 {
-  printf("TARGET: B:%i X:%i Y:%i\n", selected_cell.board, selected_cell.x, selected_cell.y);
+  int x = selected_cell.x;
+  int y = selected_cell.y;
+  printf("TARGET: B:%i X:%i Y:%i\n", selected_cell.board, x, y);
 
   if (selected_cell.board == BOARD_NONE)
   {
@@ -382,12 +387,31 @@ int add_ship(coords_t selected_cell)
     return 0;
   }
 
-  int field = player_board[selected_cell.x][selected_cell.y];
+  int field = player_board[x][y];
   if (selected_cell.board == BOARD_PLAYER)
   {
     if (field == FIELD_EMPTY)
     {
+      /* second ship part should be adjacent to first part */
+      if (second_ship_part)
+      {
+        bool adjacent_space = (x == last_ship_x && y == last_ship_y - 1)
+                            || (x == last_ship_x && y == last_ship_y + 1)
+                            || (x == last_ship_x + 1 && y == last_ship_y)
+                            || (x == last_ship_x - 1 && y == last_ship_y)
+                            ? true : false;
+
+        if (adjacent_space == false)
+        {
+          printf("RESULT: second part not adjacent\n");
+          status_message = "Place second ship part next to the first part.";
+          return 0;
+        }
+      }
+
       player_board[selected_cell.x][selected_cell.y] = FIELD_SHIP;
+      last_ship_x = selected_cell.x;
+      last_ship_y = selected_cell.y;
       printf("RESULT: ship added\n");
       status_message = "Ship added!";
       return 1;
@@ -467,7 +491,8 @@ int setup_loop()
     if(event.type == ButtonPress)
     {
       printf("Event:: mouse pressed X:%i Y:%i\n", event.xbutton.x, event.xbutton.y);
-      int added = add_ship(get_cell_by_xy(event.xbutton.x, event.xbutton.y));
+      bool second_ship_part = (ships_to_add % 2 == 0) ? false : true;
+      int added = add_ship(get_cell_by_xy(event.xbutton.x, event.xbutton.y), second_ship_part);
       ships_to_add -= added;
     }
     if(event.type == ClientMessage)
