@@ -4,6 +4,7 @@
 #include<string.h>
 #include<sys/shm.h>
 #include<signal.h>
+#include<unistd.h>
 
 #define GAME_SHIPS 6
 #define BOARD_SIZE 8
@@ -24,6 +25,7 @@
 
 #define SHARED_KEY_1 9123
 #define SHARED_KEY_2 9124
+#define SHARED_KEY_3 9125
 
 typedef enum { false, true } bool;
 
@@ -43,12 +45,16 @@ Colormap colormap;
 XColor color, exact_color;
 
 // game global variables
-int** player_board;
-int** enemy_board;
 char* status_message;
 int player_id;
+int enemy_id;
+
+int** player_board;
+int** enemy_board;
+int* player_turn;
 int shm_board1_id;
 int shm_board2_id;
+int shm_player_turn_id;
 
 int init_shared_state()
 {
@@ -56,20 +62,25 @@ int init_shared_state()
   if ((shm_board1_id = shmget(SHARED_KEY_1, 1024, 0666 | IPC_CREAT | IPC_EXCL)) != -1)
   {
     player_id = 1;
+    enemy_id = 2;
     shm_board2_id = shmget(SHARED_KEY_2, 1024, 0666 | IPC_CREAT);
+    shm_player_turn_id = shmget(SHARED_KEY_3, 1024, 0666 | IPC_CREAT);
     printf("Player ID: 1\n");
   }
   else
   {
     player_id = 2;
+    enemy_id = 1;
     shm_board1_id = shmget(SHARED_KEY_1, 1024, 0666 | IPC_CREAT);
     shm_board2_id = shmget(SHARED_KEY_2, 1024, 0666 | IPC_CREAT);
+    shm_player_turn_id = shmget(SHARED_KEY_3, 1024, 0666 | IPC_CREAT);
     printf("Player ID: 2\n");
   }
 
   /* get shared memory */
   int* shm_board_1 = shmat(shm_board1_id, 0, 0);
   int* shm_board_2 = shmat(shm_board2_id, 0, 0);
+  player_turn = shmat(shm_player_turn_id, 0, 0);
 
   /* allocate space for array of pointers */
   player_board = malloc(BOARD_SIZE * sizeof(player_board[0]));
@@ -101,13 +112,8 @@ int init_shared_state()
         enemy_board[i][j] = FIELD_EMPTY;
       }
     }
-
-    /* for debugging */
-    player_board[5][5] = 1;
+    *player_turn = player_id;
   }
-
-  /* debugging - ensure fields are set properly */
-  printf("%i %i \n", player_board[0][2], player_board[5][5]);
 }
 
 /* draw player and enemy board grid */
@@ -292,14 +298,14 @@ int shoot_at(coords_t selected_cell)
   if (selected_cell.board == BOARD_NONE)
   {
     printf("RESULT: none - no board\n");
-    status_message = "Illegal move - no board";
+    status_message = "Illegal move - no board. Try again.";
     return BOARD_NONE;
   }
 
   if (selected_cell.board == BOARD_PLAYER)
   {
     printf("RESULT: none - own board\n");
-    status_message = "Illegal move - own board";
+    status_message = "Illegal move - own board. Try again.";
     return BOARD_PLAYER;
   }
 
@@ -310,14 +316,15 @@ int shoot_at(coords_t selected_cell)
     {
       enemy_board[selected_cell.x][selected_cell.y] = FIELD_MISS;
       printf("RESULT: miss\n");
-      status_message = "Missed!";
+      status_message = "Missed! Wait for enemy turn...";
     }
     if (field == FIELD_SHIP || field == FIELD_HIT)
     {
       enemy_board[selected_cell.x][selected_cell.y] = FIELD_HIT;
       printf("RESULT: hit\n");
-      status_message = "Enemy hit!";
+      status_message = "Hit! Wait for enemy turn...";
     }
+    return BOARD_ENEMY;
   }
 }
 
@@ -442,7 +449,12 @@ void game_loop()
   status_message = "Game started. Select field to shoot at.";
   while(1)
   {
-    draw_game_state();
+    if (*player_turn == player_id)
+    {
+      status_message = "Your turn.";
+      draw_game_state();
+    }
+
     XNextEvent(display, &event);
     printf("Event:: ");
     if(event.type == Expose)
@@ -451,8 +463,16 @@ void game_loop()
     }
     if(event.type == ButtonPress)
     {
-      printf("mouse pressed X:%i Y:%i\n", event.xbutton.x, event.xbutton.y);
-      shoot_at(get_cell_by_xy(event.xbutton.x, event.xbutton.y));
+      if (*player_turn == player_id)
+      {
+        printf("mouse pressed X:%i Y:%i\n", event.xbutton.x, event.xbutton.y);
+        int shoot_result = shoot_at(get_cell_by_xy(event.xbutton.x, event.xbutton.y));
+        if (shoot_result == BOARD_ENEMY)
+        {
+          *player_turn = enemy_id;
+        }
+        draw_game_state();
+      }
     }
     if(event.type == ClientMessage)
     {
@@ -482,7 +502,10 @@ int main()
     dispose_display();
     return -1;
   }
-
+  *player_turn = enemy_id;
+  status_message = "Now wait for another player...";
+  draw_game_state();
+  while (*player_turn != player_id) { usleep(100 * 1000); }
   game_loop();
   dispose_display();
   return 0;
