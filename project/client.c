@@ -138,6 +138,66 @@ int init_shared_state()
   game_state->player_count += 1;
 }
 
+void remove_shared_state(int signal)
+{
+  game_state->player_turn = -enemy_id;
+  game_state->player_count -= 1;
+  shmctl(shm_board1_id, IPC_RMID, 0);
+  shmctl(shm_board2_id, IPC_RMID, 0);
+  shmctl(shm_game_state_id, IPC_RMID, 0);
+  exit(0);
+}
+
+void init_display()
+{
+  /* open connection with the server */
+  display = XOpenDisplay(NULL);
+  if(display == NULL)
+  {
+    printf("Cannot open display\n");
+    remove_shared_state(0);
+  }
+  /* set screen */
+  screen = DefaultScreen(display);
+  /* set GC */
+  gc = DefaultGC(display, screen);
+  /* create window */
+  window = XCreateSimpleWindow
+  (
+    display,
+    RootWindow(display, screen),
+    0,
+    0,
+    2 * (BOARD_SIZE_PX + BOARD_X_MARGIN) + BOARD_X_MARGIN,
+    BOARD_SIZE_PX + 2 * BOARD_Y_MARGIN,
+    1,
+    BlackPixel(display, screen),
+    WhitePixel(display, screen)
+  );
+  /* process window close event through event handler so XNextEvent does Not fail */
+  Atom delete_window = XInternAtom(display, "WM_DELETE_WINDOW", 0);
+  XSetWMProtocols(display, window, &delete_window, 1);
+  /* grab mouse pointer location */
+  XGrabPointer(display, window, False, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
+  /* select kind of events we are interested in */
+  XSelectInput(display, window, ExposureMask | KeyPressMask | ButtonPressMask | StructureNotifyMask);
+  /* map (show) the window */
+  XMapWindow(display, window);
+  /* get display colormap */
+  colormap = DefaultColormap(display, screen);
+  /* display file descriptor */
+  x11_file_descriptor = ConnectionNumber(display);
+}
+
+/* dispose display */
+void dispose_display()
+{
+  /* destroy our window */
+  XDestroyWindow(display, window);
+  /* close connection to server */
+  XCloseDisplay(display);
+}
+
 /* draw player and enemy board grid */
 void draw_grid()
 {
@@ -425,56 +485,6 @@ int add_ship(coords_t selected_cell, bool second_ship_part)
   }
 }
 
-void init_display()
-{
-  /* open connection with the server */
-  display = XOpenDisplay(NULL);
-  if(display == NULL)
-  {
-    printf("Cannot open display\n");
-    exit(1);
-  }
-  /* set screen */
-  screen = DefaultScreen(display);
-  /* set GC */
-  gc = DefaultGC(display, screen);
-  /* create window */
-  window = XCreateSimpleWindow
-  (
-    display,
-    RootWindow(display, screen),
-    0,
-    0,
-    2 * (BOARD_SIZE_PX + BOARD_X_MARGIN) + BOARD_X_MARGIN,
-    BOARD_SIZE_PX + 2 * BOARD_Y_MARGIN,
-    1,
-    BlackPixel(display, screen),
-    WhitePixel(display, screen)
-  );
-  /* process window close event through event handler so XNextEvent does Not fail */
-  Atom delete_window = XInternAtom(display, "WM_DELETE_WINDOW", 0);
-  XSetWMProtocols(display, window, &delete_window, 1);
-  /* grab mouse pointer location */
-  XGrabPointer(display, window, False, ButtonPressMask, GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
-  /* select kind of events we are interested in */
-  XSelectInput(display, window, ExposureMask | KeyPressMask | ButtonPressMask | StructureNotifyMask);
-  /* map (show) the window */
-  XMapWindow(display, window);
-  /* get display colormap */
-  colormap = DefaultColormap(display, screen);
-  /* display file descriptor */
-  x11_file_descriptor = ConnectionNumber(display);
-}
-
-/* dispose display */
-void dispose_display()
-{
-  /* destroy our window */
-  XDestroyWindow(display, window);
-  /* close connection to server */
-  XCloseDisplay(display);
-}
-
 /* in this phase, player sets up ships on his board */
 int setup_loop()
 {
@@ -583,16 +593,6 @@ void game_loop()
   }
   draw_game_state();
   XNextEvent(display, &event);
-}
-
-void remove_shared_state(int signal)
-{
-  game_state->player_turn = -enemy_id;
-  game_state->player_count -= 1;
-  shmctl(shm_board1_id, IPC_RMID, 0);
-  shmctl(shm_board2_id, IPC_RMID, 0);
-  shmctl(shm_game_state_id, IPC_RMID, 0);
-  exit(0);
 }
 
 int main()
