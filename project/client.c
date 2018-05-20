@@ -52,6 +52,7 @@ int x11_file_descriptor;
 char* status_message;
 int player_id;
 int enemy_id;
+int hits;
 
 int** player_board;
 int** enemy_board;
@@ -316,18 +317,34 @@ int shoot_at(coords_t selected_cell)
   int field = enemy_board[selected_cell.x][selected_cell.y];
   if (selected_cell.board == BOARD_ENEMY)
   {
-    if (field == FIELD_EMPTY || field == FIELD_MISS)
+    if (field == FIELD_MISS)
+    {
+      enemy_board[selected_cell.x][selected_cell.y] = FIELD_MISS;
+      printf("RESULT: duplicate miss\n");
+      status_message = "Shot lost! Wait for enemy turn...";
+    }
+
+    if (field == FIELD_EMPTY)
     {
       enemy_board[selected_cell.x][selected_cell.y] = FIELD_MISS;
       printf("RESULT: miss\n");
       status_message = "Missed! Wait for enemy turn...";
     }
-    if (field == FIELD_SHIP || field == FIELD_HIT)
+
+    if (field == FIELD_HIT)
+    {
+      printf("RESULT: duplicate hit\n");
+      status_message = "Shot lost! Wait for enemy turn...";
+    }
+
+    if (field == FIELD_SHIP)
     {
       enemy_board[selected_cell.x][selected_cell.y] = FIELD_HIT;
+      hits++;
       printf("RESULT: hit\n");
       status_message = "Hit! Wait for enemy turn...";
     }
+
     return BOARD_ENEMY;
   }
 }
@@ -442,7 +459,7 @@ int setup_loop()
     if(event.type == ClientMessage)
     {
       printf("Event:: window closed\n");
-      *player_turn = -1;
+      *player_turn = -enemy_id;
       return -1;
     }
   }
@@ -454,7 +471,7 @@ void game_loop()
 {
   fd_set in_fds;
   status_message = "Game started. Select field to shoot at.";
-  while(*player_turn != -1)
+  while(*player_turn > 0)
   {
     // Create a file description set containing x11_fd
     FD_ZERO(&in_fds);
@@ -492,7 +509,15 @@ void game_loop()
           int shoot_result = shoot_at(get_cell_by_xy(event.xbutton.x, event.xbutton.y));
           if (shoot_result == BOARD_ENEMY)
           {
-            *player_turn = enemy_id;
+            // shoot_result contains "hit" when same ship is hit twice. TODO: add additional IF in shot_at
+            if (hits >= GAME_SHIPS)
+            {
+              *player_turn = -player_id;
+            }
+            else
+            {
+              *player_turn = enemy_id;
+            }
           }
           draw_game_state();
         }
@@ -500,23 +525,31 @@ void game_loop()
       if(event.type == ClientMessage)
       {
         printf("Event:: window closed\n");
-        *player_turn = -1;
+        *player_turn = -enemy_id;
         return;
       }
       XFlush(display);
     }
   }
 
-  status_message = "You have won!";
+  if (*player_turn == -player_id)
+  {
+    status_message = "You have won!";
+  }
+  if (*player_turn == -enemy_id)
+  {
+    status_message = "You have lost!";
+  }
   draw_game_state();
   XNextEvent(display, &event);
 }
 
 void remove_shared_state(int signal)
 {
-  *player_turn = -1;
+  *player_turn = -enemy_id;
   shmctl(shm_board1_id, IPC_RMID, 0);
   shmctl(shm_board2_id, IPC_RMID, 0);
+  shmctl(shm_player_turn_id, IPC_RMID, 0);
   exit(0);
 }
 
@@ -539,5 +572,6 @@ int main()
   while (*player_turn != player_id) { usleep(100 * 1000); }
   game_loop();
   dispose_display();
+  remove_shared_state(0);
   return 0;
 }
