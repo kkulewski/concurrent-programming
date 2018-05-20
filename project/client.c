@@ -36,7 +36,10 @@ typedef struct coords_st {
   int y;
 } coords_t;
 
-struct timeval tv;
+typedef struct game_state_st {
+  int player_turn;
+  int player_count;
+} game_state_t;
 
 // xlib global variables
 Display *display;
@@ -54,12 +57,14 @@ int player_id;
 int enemy_id;
 int hits;
 
+struct timeval tv;
 int** player_board;
 int** enemy_board;
 int* player_turn;
+game_state_t* game_state;
 int shm_board1_id;
 int shm_board2_id;
-int shm_player_turn_id;
+int shm_game_state_id;
 
 int init_shared_state()
 {
@@ -69,8 +74,7 @@ int init_shared_state()
     player_id = 1;
     enemy_id = 2;
     shm_board2_id = shmget(SHARED_KEY_2, 1024, 0666 | IPC_CREAT);
-    shm_player_turn_id = shmget(SHARED_KEY_3, 1024, 0666 | IPC_CREAT);
-    printf("Player ID: 1\n");
+    shm_game_state_id = shmget(SHARED_KEY_3, sizeof(game_state_t), 0666 | IPC_CREAT);
   }
   else
   {
@@ -78,18 +82,23 @@ int init_shared_state()
     enemy_id = 1;
     shm_board1_id = shmget(SHARED_KEY_1, 1024, 0666 | IPC_CREAT);
     shm_board2_id = shmget(SHARED_KEY_2, 1024, 0666 | IPC_CREAT);
-    shm_player_turn_id = shmget(SHARED_KEY_3, 1024, 0666 | IPC_CREAT);
-    printf("Player ID: 2\n");
+    shm_game_state_id = shmget(SHARED_KEY_3, sizeof(game_state_t), 0666 | IPC_CREAT);
   }
 
   /* get shared memory */
   int* shm_board_1 = shmat(shm_board1_id, 0, 0);
   int* shm_board_2 = shmat(shm_board2_id, 0, 0);
-  player_turn = shmat(shm_player_turn_id, 0, 0);
+  game_state = shmat(shm_game_state_id, 0, 0);
 
   /* allocate space for array of pointers */
   player_board = malloc(BOARD_SIZE * sizeof(player_board[0]));
   enemy_board = malloc(BOARD_SIZE * sizeof(enemy_board[0]));
+
+  if (game_state->player_count >= 2)
+  {
+    printf("There are two players in game already.\n");
+    exit(-1);
+  }
 
   /* make each pointer in board array point to shared memory */
   for (int i = 0; i < BOARD_SIZE; i++)
@@ -117,8 +126,13 @@ int init_shared_state()
         enemy_board[i][j] = FIELD_EMPTY;
       }
     }
-    *player_turn = player_id;
+    game_state->player_count = 0;
+    game_state->player_turn = player_id;
+    printf("You are host.\n");
   }
+
+  /* both players need to increment player count */
+  game_state->player_count += 1;
 }
 
 /* draw player and enemy board grid */
@@ -459,7 +473,7 @@ int setup_loop()
     if(event.type == ClientMessage)
     {
       printf("Event:: window closed\n");
-      *player_turn = -enemy_id;
+      game_state->player_turn = -enemy_id;
       return -1;
     }
   }
@@ -471,7 +485,7 @@ void game_loop()
 {
   fd_set in_fds;
   status_message = "Game started. Select field to shoot at.";
-  while(*player_turn > 0)
+  while(game_state->player_turn > 0)
   {
     // Create a file description set containing x11_fd
     FD_ZERO(&in_fds);
@@ -486,7 +500,7 @@ void game_loop()
     if (num_ready_fds == 0)
     {
         // Handle timer here
-        if (*player_turn == player_id)
+        if (game_state->player_turn == player_id)
         {
           status_message = "Your turn.";
           draw_game_state();
@@ -504,7 +518,7 @@ void game_loop()
       if(event.type == ButtonPress)
       {
         printf("Event:: mouse pressed X:%i Y:%i\n", event.xbutton.x, event.xbutton.y);
-        if (*player_turn == player_id)
+        if (game_state->player_turn == player_id)
         {
           int shoot_result = shoot_at(get_cell_by_xy(event.xbutton.x, event.xbutton.y));
           if (shoot_result == BOARD_ENEMY)
@@ -512,11 +526,11 @@ void game_loop()
             // shoot_result contains "hit" when same ship is hit twice. TODO: add additional IF in shot_at
             if (hits >= GAME_SHIPS)
             {
-              *player_turn = -player_id;
+              game_state->player_turn = -player_id;
             }
             else
             {
-              *player_turn = enemy_id;
+              game_state->player_turn = enemy_id;
             }
           }
           draw_game_state();
@@ -525,20 +539,22 @@ void game_loop()
       if(event.type == ClientMessage)
       {
         printf("Event:: window closed\n");
-        *player_turn = -enemy_id;
+        game_state->player_turn = -enemy_id;
         return;
       }
       XFlush(display);
     }
   }
 
-  if (*player_turn == -player_id)
+  if (game_state->player_turn == -player_id)
   {
     status_message = "You have won!";
+    printf("Game finished - you have won.\n");
   }
-  if (*player_turn == -enemy_id)
+  if (game_state->player_turn == -enemy_id)
   {
     status_message = "You have lost!";
+    printf("Game finished - you have lost.\n");
   }
   draw_game_state();
   XNextEvent(display, &event);
@@ -546,10 +562,11 @@ void game_loop()
 
 void remove_shared_state(int signal)
 {
-  *player_turn = -enemy_id;
+  game_state->player_turn = -enemy_id;
+  game_state->player_count -= 1;
   shmctl(shm_board1_id, IPC_RMID, 0);
   shmctl(shm_board2_id, IPC_RMID, 0);
-  shmctl(shm_player_turn_id, IPC_RMID, 0);
+  shmctl(shm_game_state_id, IPC_RMID, 0);
   exit(0);
 }
 
@@ -557,8 +574,8 @@ int main()
 {
   signal(SIGINT, remove_shared_state);
 
-  init_display();
   init_shared_state();
+  init_display();
 
   int state = setup_loop();
   if (state == -1)
@@ -566,10 +583,10 @@ int main()
     dispose_display();
     return -1;
   }
-  *player_turn = enemy_id;
+  game_state->player_turn = enemy_id;
   status_message = "Now wait for another player...";
   draw_game_state();
-  while (*player_turn != player_id) { usleep(100 * 1000); }
+  while (game_state->player_turn != player_id) { usleep(100 * 1000); }
   game_loop();
   dispose_display();
   remove_shared_state(0);
