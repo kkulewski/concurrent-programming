@@ -10,3 +10,8 @@
 - gniazda BSD (C)
 - biblioteka funkcji graficznych XLIB (C)
 - wątki według normy POSIX
+
+## Projekt - statki
+Gra w Statki (lub Okręty, ang. Battleships, Sea Battle) dla dwóch graczy.
+- XLIB
+- pamięć współdzielona
